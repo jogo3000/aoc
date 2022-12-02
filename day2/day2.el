@@ -2,7 +2,10 @@
 ;;; Commentary:
 ;;; Code:
 
+(require 'cl-macs)
+
 (defun parse-choice (choice)
+  "Parse CHOICE to keyword."
   (pcase choice
     ("A" :rock)
     ("B" :paper)
@@ -19,6 +22,7 @@
     (:scissors 3)))
 
 (defun round->points (their-choice my-choice)
+  "Calculate points for a round of THEIR-CHOICE and MY-CHOICE."
   (+
    (shape->points my-choice)
    (pcase my-choice
@@ -50,6 +54,7 @@
 
 
 (defun round->points-v2 (their-choice result)
+  "V2 version of point calculation based on THEIR-CHOICE and desired RESULT."
   (let ((parsed-result (pcase result
                          ("X" :lose)
                          ("Y" :draw)
