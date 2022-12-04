@@ -26,7 +26,6 @@
   (or (<= (car r1) (car r2) (cadr r2) (cadr r1))
       (<= (car r2) (car r1) (cadr r1) (cadr r2))))
 
-
 (defun count-fully-overlapping-pairs (data)
   "Return count of fully overlapping pairs in DATA."
   (seq-reduce
