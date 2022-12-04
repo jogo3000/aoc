@@ -23,10 +23,8 @@
 
 (defun ranges-fully-overlap-p (r1 r2)
   "Return non-nil if ranges R1 and R2 overlap fully."
-  (or (and (<= (car r1) (car r2))
-           (>= (cadr r1) (cadr r2)))
-      (and (>= (car r1) (car r2))
-           (<= (cadr r1) (cadr r2)))))
+  (or (<= (car r1) (car r2) (cadr r2) (cadr r1))
+      (<= (car r2) (car r1) (cadr r1) (cadr r2))))
 
 
 (defun count-fully-overlapping-pairs (data)
