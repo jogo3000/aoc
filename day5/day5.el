@@ -16,32 +16,14 @@ move 3 from 1 to 3
 move 2 from 2 to 1
 move 1 from 1 to 2")
 
-(defun parse-stacks (stacks-part)
-  "Parse initial stacks configuration from STACKS-PART."
-  (let* ((stacks-reversed (seq-reverse (string-lines stacks-part)))
-         (number-of-stacks (car
-                            (read-from-string (car (last (split-string (string-trim (car stacks-reversed))
-                                                                       "\s\s"
-                                                                       nil
-                                                                       "\s")))))))
-    (seq-reduce
-     (lambda (acc row)
-       (seq-reduce
-        (lambda (acc-inner numbered-row)
-          (cl-destructuring-bind (n container?) numbered-row
-            (let ((v? (substring container? 1 2)))
-              (if (not (string-equal " " v?))
-                  (apply #'seq-concatenate
-                         'list
-                         (seq-take acc-inner n)
-                         (list (cons v? (seq-elt acc-inner n)))
-                         (list (seq-drop acc-inner (+ 1 n))))
-                acc-inner))))
-        (seq-map-indexed (lambda (v i)
-                           (list i v)) (seq-partition row 4))
-        acc))
-     (cdr stacks-reversed)
-     (make-list number-of-stacks (list)))))
+(defun parse-number-of-stacks (row)
+  "Parse number of stacks from ROW."
+  (string-match (rx (seq (0+ (seq (0+ whitespace)
+                                  (1+ numeric)
+                                  (0+ whitespace)))
+                         (group (1+ numeric))
+                         (0+ whitespace))) row)
+  (car (read-from-string (match-string 1 row))))
 
 (defun stack-set (stack v n)
   "Set element V to STACK in position N."
@@ -50,6 +32,26 @@ move 1 from 1 to 2")
          (seq-take stack n)
          (list v)
          (list (seq-drop stack (+ 1 n)))))
+
+(defun parse-stacks (stacks-part)
+  "Parse initial stacks configuration from STACKS-PART."
+  (let* ((stacks-reversed (seq-reverse (string-lines stacks-part)))
+         (numbers-row (car stacks-reversed))
+         (number-of-stacks (parse-number-of-stacks numbers-row)))
+    (seq-reduce
+     (lambda (acc row)
+       (seq-reduce
+        (lambda (acc-inner numbered-row)
+          (cl-destructuring-bind (n container?) numbered-row
+            (let ((v? (substring container? 1 2)))
+              (if (not (string-equal " " v?))
+                  (stack-set acc-inner (cons v? (seq-elt acc-inner n)) n)
+                acc-inner))))
+        (seq-map-indexed (lambda (v i)
+                           (list i v)) (seq-partition row 4))
+        acc))
+     (cdr stacks-reversed)
+     (make-list number-of-stacks (list)))))
 
 (defun run-instruction (stack instruction)
   "Run INSTRUCTION on STACK."
