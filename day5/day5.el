@@ -56,8 +56,8 @@ move 1 from 1 to 2")
      (cdr stacks-reversed)
      (make-list number-of-stacks (list)))))
 
-(defun run-instruction (stack instruction)
-  "Run INSTRUCTION on STACK."
+(defun run-instruction (stacks instruction)
+  "Run INSTRUCTION on STACKS."
   (cl-destructuring-bind (amount from to)
       (mapcar #'car
               (mapcar
@@ -66,13 +66,12 @@ move 1 from 1 to 2")
 
     (let* ((from (- from 1))
            (to (- to 1))
-           (amount amount)
-           (original-from (seq-elt stack from))
-           (original-to (seq-elt stack to))
+           (original-from (seq-elt stacks from))
+           (original-to (seq-elt stacks to))
            (new-to (seq-concatenate 'list (seq-reverse (seq-take original-from amount)) original-to))
            (new-from (seq-drop original-from amount))
 
-           (from-replaced (stack-set stack new-from from)))
+           (from-replaced (stack-set stacks new-from from)))
       (stack-set from-replaced new-to to))))
 
 (require 'subr-x)
