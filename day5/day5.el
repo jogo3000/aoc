@@ -98,4 +98,46 @@ move 1 from 1 to 2")
 
 ;; part 2
 
+(defun run-instruction-2 (stack instruction)
+  "Run INSTRUCTION on STACK."
+  (cl-destructuring-bind (amount from to)
+      (seq-map
+       #'read-from-string
+       (split-string instruction (rx (or "move" "from" "to")) t "\s"))
+
+    (let* ((from (- (car from) 1))
+           (to (- (car to) 1))
+           (amount (car amount))
+           (original-from (seq-elt stack from))
+           (original-to (seq-elt stack to))
+           (new-to (seq-concatenate 'list (seq-take original-from amount) original-to))
+           (new-from (seq-drop original-from amount))
+
+           (from-replaced (stack-set stack new-from from)))
+      (stack-set from-replaced new-to to))))
+
+(defun run-simulation-2 (input)
+  "Run simulation in INPUT."
+  (cl-destructuring-bind (stacks-part instructions) (split-string input "\n\n")
+    (let* ((stacks
+            (parse-stacks stacks-part))
+
+           (reorganized-stacks
+            (seq-reduce
+             #'run-instruction-2
+             (string-lines instructions)
+             stacks)))
+
+      (string-join (mapcar #'car reorganized-stacks)))))
+
+
+(run-simulation-2 sample-input)
+
+(with-current-buffer (find-file-noselect "./input")
+  (run-simulation-2 (string-trim-right (buffer-substring-no-properties (point-min) (point-max)))))
+
+;; "NGCMPJLHV"
+
+
+
 ;;; day5.el ends here
