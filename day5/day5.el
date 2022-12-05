@@ -33,36 +33,40 @@ move 1 from 1 to 2")
          (list v)
          (list (seq-drop stack (+ 1 n)))))
 
+(defun parse-stacks-row (stacks row)
+  "Parse stack state defining ROW into STACKS."
+  (seq-reduce
+   (lambda (acc-inner numbered-row)
+     (cl-destructuring-bind (n container?) numbered-row
+       (let ((v? (substring container? 1 2)))
+         (if (not (string-equal " " v?))
+             (stack-set acc-inner (cons v? (seq-elt acc-inner n)) n)
+           acc-inner))))
+   (seq-map-indexed (lambda (v i)
+                      (list i v)) (seq-partition row 4))
+   stacks))
+
 (defun parse-stacks (stacks-part)
   "Parse initial stacks configuration from STACKS-PART."
   (let* ((stacks-reversed (seq-reverse (string-lines stacks-part)))
          (numbers-row (car stacks-reversed))
          (number-of-stacks (parse-number-of-stacks numbers-row)))
     (seq-reduce
-     (lambda (acc row)
-       (seq-reduce
-        (lambda (acc-inner numbered-row)
-          (cl-destructuring-bind (n container?) numbered-row
-            (let ((v? (substring container? 1 2)))
-              (if (not (string-equal " " v?))
-                  (stack-set acc-inner (cons v? (seq-elt acc-inner n)) n)
-                acc-inner))))
-        (seq-map-indexed (lambda (v i)
-                           (list i v)) (seq-partition row 4))
-        acc))
+     #'parse-stacks-row
      (cdr stacks-reversed)
      (make-list number-of-stacks (list)))))
 
 (defun run-instruction (stack instruction)
   "Run INSTRUCTION on STACK."
   (cl-destructuring-bind (amount from to)
-      (seq-map
-       #'read-from-string
-       (split-string instruction (rx (or "move" "from" "to")) t "\s"))
+      (mapcar #'car
+              (mapcar
+               #'read-from-string
+               (split-string instruction (rx (or "move" "from" "to")) t "\s")))
 
-    (let* ((from (- (car from) 1))
-           (to (- (car to) 1))
-           (amount (car amount))
+    (let* ((from (- from 1))
+           (to (- to 1))
+           (amount amount)
            (original-from (seq-elt stack from))
            (original-to (seq-elt stack to))
            (new-to (seq-concatenate 'list (seq-reverse (seq-take original-from amount)) original-to))
