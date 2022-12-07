@@ -89,15 +89,94 @@ $ ls
 
 (defvar day7-sizes nil)
 
-(defun day7-du (dir)
-  "Find size of DIR."
+(require 'subr-x)
+
+(defun day7-file-content-sizes (dir)
   (apply #'+
          (mapcar #'cadr
                  (map-filter (lambda (k v)
                                (integerp (car v))) dir))))
 
-(day7-du (parse-data sample-data))
+(defun day7-du (here dir)
+  "Find size of DIR in HERE."
+  (let ((file-content-size (apply #'+
+                                  (mapcar #'cadr
+                                          (map-filter (lambda (k v)
+                                                        (integerp (car v))) dir))))
+        (subdir-sizes (thread-last
+                        dir
+                        (map-filter (lambda (k v) (and (listp (car v))
+                                                       (< 0 (seq-length (car v))))))
+                        (map-apply (lambda (k v)
+                                     (day7-du k (car v)))))))
 
-(day7-du '(("i" 2348) ("a" nil)))
+    (message "here %s dir %s" here dir)
+    (message "here %s - file-content %d -- subdir %s" here file-content-size subdir-sizes)
+    (if (not subdir-sizes)
+        (list here file-content-size)
+        (apply #'seq-concatenate 'list
+         (list
+          here
+          (+ file-content-size
+             (thread-last
+               subdir-sizes
+               (mapcar #'cadr)
+               (seq-filter #'integerp)
+               (apply #'+))))
+         subdir-sizes))))
+
+
+(day7-du "/" (parse-data sample-data))
+;; ("/" 48381165 "/" 48381165 "a" 94853 "e" 584 "d" 24933642)
+
+
+(thread-last
+  sample-data
+  parse-data
+  (day7-du "/")
+  (seq-filter (lambda (v) (and (integerp v)
+                                        (>= 100000 v))))
+  (apply #'+))
+
+(with-current-buffer (find-file-noselect "./input")
+  (thread-last
+    (string-trim-right (buffer-substring-no-properties (point-min) (point-max)))
+    parse-data
+    (day7-du "/")
+    (seq-filter (lambda (v) (and (integerp v)
+                                 (>= 100000 v))))
+    (apply #'+)))
+
+;; 1844187
+;; 4978279
+
+;;; part 2
+
+(let* ((total-space 70000000)
+       (needed-space 30000000)
+       (du
+        (thread-last
+          sample-data
+          parse-data
+          (day7-du "/")))
+       (free-space (- total-space (lax-plist-get du "/"))))
+  (apply #'min (seq-filter (lambda (v) (and (integerp v) (<= needed-space (+ free-space v)))) du)))
+
+
+(with-current-buffer (find-file-noselect "./input")
+  (let* ((total-space 70000000)
+         (needed-space 30000000)
+         (du
+          (thread-last
+            (string-trim-right (buffer-substring-no-properties (point-min) (point-max)))
+            parse-data
+            (day7-du "/")))
+         (free-space (- total-space (lax-plist-get du "/"))))
+    (apply #'min (seq-filter (lambda (v) (and (integerp v) (<= needed-space (+ free-space v)))) du))))
+
+;; 4978279
+
+
+
 
 ;;; day7.el ends here
