@@ -195,8 +195,85 @@ U 20"))
 
 ;; 36 - correct!
 
+(with-current-buffer (find-file-noselect "./input")
+  (seq-length
+   (run-simulation-v2 '((head . (0 . 0))
+                        (t1 . (0 . 0))
+                        (t2 . (0 . 0))
+                        (t3 . (0 . 0))
+                        (t4 . (0 . 0))
+                        (t5 . (0 . 0))
+                        (t6 . (0 . 0))
+                        (t7 . (0 . 0))
+                        (t8 . (0 . 0))
+                        (t9 . (0 . 0))
+                        (positions . nil))
+                      (buffer-substring-no-properties (point-min) (point-max)))))
+
+;; Initial result 2567 - too high !
+;; made a renderer, which helped me spot the problem
+
+(defun render-day9-positions (positions)
+  "Render POSITIONS graphically."
+  (let ((lowest-x (apply #'min (mapcar #'car positions)))
+        (lowest-y (apply #'min (mapcar #'cdr positions)))
+        (highest-x (apply #'max (mapcar #'car positions)))
+        (highest-y (apply #'max (mapcar #'cdr positions))))
+    (seq-reduce
+     (lambda (acc row)
+       (string-join
+        (list acc "\n"
+              (string-join
+               (mapcar
+                (lambda (col)
+                  (if (seq-contains-p positions `(,(+ row lowest-x) . ,(+ col lowest-y))) "#" "."))
+                (number-sequence 0 (- highest-y lowest-y)))))))
+     (number-sequence 0 (- highest-x lowest-x))
+     "")))
+
+(number-sequence 0 (- 6 -5))
+
+(render-day9-positions
+ (run-simulation-v2 '((head . (0 . 0))
+                      (t1 . (0 . 0))
+                      (t2 . (0 . 0))
+                      (t3 . (0 . 0))
+                      (t4 . (0 . 0))
+                      (t5 . (0 . 0))
+                      (t6 . (0 . 0))
+                      (t7 . (0 . 0))
+                      (t8 . (0 . 0))
+                      (t9 . (0 . 0))
+                      (positions . nil))
+                    "R 5
+U 8
+L 8
+D 3
+R 17
+D 10
+L 25
+U 20"))
 
 
+(run-simulation-v2 '((head . (0 . 0))
+                      (t1 . (0 . 0))
+                      (t2 . (0 . 0))
+                      (t3 . (0 . 0))
+                      (t4 . (0 . 0))
+                      (t5 . (0 . 0))
+                      (t6 . (0 . 0))
+                      (t7 . (0 . 0))
+                      (t8 . (0 . 0))
+                      (t9 . (0 . 0))
+                      (positions . nil))
+                    "R 5
+U 8
+L 8
+D 3
+R 17
+D 10
+L 25
+U 20")
 
 
 ;;; day9.el ends here
