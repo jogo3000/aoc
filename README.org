@@ -1,0 +1,4 @@
+* Playing [[https://adventofcode.com/2022][Advent of code 2022]]
+
+Emacs lisp solutions (at least so far). Not taking things too seriously. I want
+to live a normal life as well.
