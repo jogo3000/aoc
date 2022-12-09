@@ -33,18 +33,20 @@ R 2")
   "Return next TAIL's position so it follows HEAD."
   (let ((rowdiff (- (car head) (car tail)))
         (coldiff (- (cdr head) (cdr tail))))
-    (cond
-     ((< 1 (abs rowdiff)) `(,(if (cl-plusp rowdiff)
-                                 (+ (car tail) 1)
-                               (- (car tail) 1))
-                            .
-                            ,(+ (cdr tail) coldiff)))
-     ((< 1 (abs coldiff)) `(,(+ (car tail) rowdiff)
-                            .
-                            ,(if (cl-plusp coldiff)
-                                 (+ (cdr tail) 1)
-                               (- (cdr tail) 1))))
-     (t tail))))
+    (if
+     (or (< 1 (abs rowdiff))
+         (< 1 (abs coldiff)))
+        `(,(cond
+            ((cl-plusp rowdiff) (+ (car tail) 1))
+            ((cl-minusp rowdiff) (- (car tail) 1))
+            (t (car tail)))
+          .
+          ,(cond
+            ((cl-plusp coldiff) (+ (cdr tail) 1))
+            ((cl-minusp coldiff) (- (cdr tail) 1))
+            (t (cdr tail))))
+
+     tail)))
 
 
 ;;; Making sure tail moves correctly
@@ -230,6 +232,8 @@ U 20"))
                         (t9 . (0 . 0))
                         (positions . nil))
                       (buffer-substring-no-properties (point-min) (point-max)))))
+
+;; 2504
 
 ;; Initial result 2567 - too high !
 ;; made a renderer, which helped me spot the problem
