@@ -57,9 +57,20 @@ R 2")
 (maybe-adjust-tail '(0 . 2) '(0 . 0))
 (maybe-adjust-tail '(1 . 2) '(0 . 0))
 
+; .H.    .H.
+; ... -> .T.
+; T..    ...
+
+
+(maybe-adjust-tail '(2 . 2) '(1 . 0))
+
+; ..H    .TH
+; T.. -> ...
+; ...    ...
+
 
 (defun run-simulation (initial-state input)
-  "Count positions the tail will visit with given INPUT."
+  "Given INITIAL-STATE, count positions the tail will visit with given INPUT."
   (let ((final-state
          (seq-reduce
           (lambda (acc line)
@@ -97,6 +108,8 @@ R 2")
     (positions . nil))
   sample-input))
 
+;; 13
+
 
 (with-current-buffer (find-file-noselect "./input")
   (seq-length
@@ -108,6 +121,11 @@ R 2")
 ;; 6314
 
 ;; part 2
+
+(defun knot-distance (p1 p2)
+  "Return distance from P1 to P2."
+  (max (- (car p1) (car p2))
+       (- (cdr p1) (cdr p2))))
 
 (defun run-simulation-v2 (initial-state input)
   "Given INITIAL-STATE, count positions the tail will visit with given INPUT."
@@ -137,6 +155,9 @@ R 2")
                           (new-t9 (maybe-adjust-tail new-t8 .t9)))
 
                      (when (> (knot-distance new-t9 .t9) 1)
+                       (message "Error when head is at %s" .head)
+                       (message "knot distance %s" (knot-distance new-t9 .t9)))
+
                      (setf (alist-get 't1 acc) new-t1)
                      (setf (alist-get 't2 acc) new-t2)
                      (setf (alist-get 't3 acc) new-t3)
