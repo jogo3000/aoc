@@ -78,6 +78,115 @@ addx -5")
 
 ;; part 2
 
+(require 'map)
+
+(defun initialize-state&screen ()
+  "Initialize program state and screen."
+  (map-insert (initialize-state) 'row nil))
+
+(defun run-day10-program-render (input)
+  "Run program in INPUT."
+  (let ((program (thread-last input
+                              string-chop-newline
+                              string-lines))
+        (state (initialize-state)))
+
+    (dotimes (clock 241)
+      (let ((col (mod clock 40)))
+        (let-alist state
+          (cond
+           ((= clock 0) nil)
+           ((and (not program) (not .running)) nil)
+           (.running (seq-let (command params) .running
+                       (pcase command
+                         ("addx" (setf (alist-get 'x state)
+                                       (+ .x (car (read-from-string params))))))
+                       (setf (alist-get 'running state)
+                             nil)))
+           ((not .running) (let ((next-command (pop program)))
+                             (seq-let (command params) (split-string next-command)
+                               (pcase command
+                                 ("noop" nil)
+                                 ("addx" (setf (alist-get 'running state)
+                                               (list command params))))))))
+          (setf (alist-get 'row state) (cons (if (<= .x col (+ 2 .x)) "#" ".") .row))
+          (when (= col 0)
+            (setf (alist-get 'out state) (cons (alist-get 'row state) .out))
+            (setf (alist-get 'row state) (list)))
+          (setf (alist-get 'cycle state) clock))))
+    state))
+
+(insert
+ (let-alist (run-day10-program-render sample-input)
+   (let ((rows (mapcar (lambda (row) (string-join (reverse row))) (reverse .out))))
+     (string-join rows "\n"))))
+
+;; output
+;; ##..##..##..##..##..##..##..##..##..##..
+;; ###...###...###...###...###...###...###.
+;; ####....####....####....####....####....
+;; #####.....#####.....#####.....#####.....
+;; ######......######......######......###.
+;; #######.......#######.......#######.....
+
+;; comparison
+;; ##..##..##..##..##..##..##..##..##..##..
+;; ###...###...###...###...###...###...###.
+;; ####....####....####....####....####....
+;; #####.....#####.....#####.....#####.....
+;; ######......######......######......####
+;; #######.......#######.......#######.....
+
+
+(insert
+ (with-current-buffer (find-file-noselect "./input")
+   (let-alist (run-day10-program-render (buffer-substring-no-properties (point-min) (point-max)))
+     (let ((rows (mapcar (lambda (row) (string-join (reverse row))) (reverse .out))))
+       (string-join rows "\n")))))
+
+;; ####.#..#.###..####.###....##..##..#....
+;; #....#..#.#..#....#.#..#....#.#..#.#...#
+;; ###..####.#..#...#..#..#....#.#....#...#
+;; #....#..#.###...#...###.....#.#.##.#...#
+;; #....#..#.#....#....#....#..#.#..#.#....
+;; ####.#..#.#....####.#.....##...###.####.
+
+;; If we scrap the rightmost column:
+;; ####.#..#.###..####.###....##..##..#...
+;; #....#..#.#..#....#.#..#....#.#..#.#...
+;; ###..####.#..#...#..#..#....#.#....#...
+;; #....#..#.###...#...###.....#.#.##.#...
+;; #....#..#.#....#....#....#..#.#..#.#...
+;; ####.#..#.#....####.#.....##...###.####
+
+;; Old broken inputs
+
+;; v1 I think it's upside down
+;; ####.###..###....#######....#.#.#######
+;; ..####.####..#....#...##....#.#.##....#
+;; ...#.######....####...#..######..#....#
+;; ...#...####....#.##..#..##..#.####..###
+;; ...#.#.####....#.####....#.####..#....#
+;; ..##..##.###...#########.######.#######
+
+;; v2 I think it's mirrored
+;; ..##..##.###...#########.######.#######
+;; ...#.#.####....#.####....#.####..#....#
+;; ...#...####....#.##..#..##..#.####..###
+;; ...#.######....####...#..######..#....#
+;; ..####.####..#....#...##....#.#.##....#
+;; ####.###..###....#######....#.#.#######
+
+;; Still mangled somehow
+;; #######.######.#########...###.##..##..
+;; #....#..####.#....####.#....####.#.#...
+;; ###..####.#..##..#..##.#....####...#...
+;; #....#..######..#...####....######.#...
+;; #....##.#.#....##...#....#..####.####..
+;; #######.#.#....#######....###..###.####
+
+
+
 
 
 
