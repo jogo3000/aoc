@@ -1,0 +1,163 @@
+;;; Summary --- day11.el
+;;; Commentary:
+;;; Code:
+
+(defvar sample-input nil)
+
+(require 'subr-x)
+(require 'seq)
+
+(defun split-to-monkey-parts (s)
+  "Split initial S to separate monkey parts."
+  (split-string (string-trim s) "\n\n"))
+
+(defun parse-op-part (op-part)
+  "Make a function outta OP-PART."
+  (let ((fn-part (thread-first
+                   op-part
+                   (split-string "=")
+                   cadr)))
+    (car
+     (read-from-string
+      (format "(lambda (old) (%s %s %s))"
+              (substring fn-part 5 6)
+              (substring fn-part 1 4)
+              (substring fn-part 7 (string-bytes fn-part)))))))
+
+
+
+(defun parse-test-part (test-part)
+  "Make a function outta TEST-PART."
+  (car (read-from-string
+        (format "(lambda (x) (= 0 (mod x %s)))"
+                (substring
+                 test-part
+                 (string-bytes "Test: divisible by ")
+                 (string-bytes test-part))))))
+
+(defun parse-starting-condition (s)
+  "Parse starting condition from S."
+  (thread-last
+    (split-to-monkey-parts s)
+    (mapcar
+     (lambda (monkey-state)
+       (seq-let (monkey-n item-part op-part test-part then-part else-part)
+           (mapcar #'string-trim (string-lines (string-trim monkey-state)))
+         `((name . ,monkey-n)
+           ,(cons 'inspected-items 0)
+           (items . ,(let ((parts (thread-first
+                                    item-part
+                                    (split-string ":")
+                                    cadr
+                                    (split-string ","))))
+                       (mapcar #'string-to-number parts)))
+           (operation . ,(parse-op-part op-part))
+           (test . ,(parse-test-part test-part))
+           (true-op . ,(string-to-number
+                        (string-remove-prefix
+                         "If true: throw to monkey "
+                         then-part)))
+           (false-op . ,(string-to-number
+                         (string-remove-prefix
+                          "If false: throw to monkey "
+                          else-part)))))))))
+
+(parse-starting-condition sample-input)
+
+(defun perform-monkey-round (state monkey)
+  "Perform actions of a single MONKEY on STATE."
+  (let-alist monkey
+    (seq-reduce
+     (lambda (state item)
+       (message "item %s" item)
+       (let* ((new-worry-level (thread-first (funcall .operation item) (/ 3)))
+              (target-monkey
+               (if (let ((which? (funcall .test new-worry-level)))
+                     (message "%s" which?)
+                     which?)
+                   (elt state .true-op)
+                 (elt state .false-op)))
+              (target-items
+               (alist-get 'items target-monkey)))
+         (setf (alist-get 'inspected-items monkey)
+               (+ (alist-get 'inspected-items monkey) 1))
+         (setf (alist-get 'items target-monkey)
+               (append target-items (list new-worry-level)))
+         (setf (alist-get 'items monkey)
+               nil)
+         state))
+     .items
+     state)
+    state))
+
+(defun perform-round (state)
+  "Do round of monkey business on STATE."
+  (seq-reduce #'perform-monkey-round state state))
+
+
+(let ((state (parse-starting-condition sample-input)))
+  (perform-monkey-round state (elt state 0)))
+
+(thread-first
+  (parse-starting-condition sample-input)
+  perform-round ; seems to work!
+  perform-round
+  perform-round)
+
+(defun monkey-business-for (input)
+  "Play 20 rounds of monkey business on INPUT."
+  (let* ((initial-state (parse-starting-condition input))
+         (final-state (thread-last
+                        (seq-reduce
+                         (lambda (state _)
+                           (perform-round state))
+                         (number-sequence 1 20)
+                         initial-state))))
+
+    (apply '*
+           (thread-first
+             (mapcar (lambda (monkey) (alist-get 'inspected-items monkey)) final-state)
+             (sort #'>)
+             (seq-take 2)))))
+
+(monkey-business-for sample-input)
+;; 10605 - ok!
+
+(with-current-buffer (find-file-noselect "./input")
+  (monkey-business-for (buffer-substring-no-properties (point-min)
+                                                       (point-max))))
+
+;; 66802
+
+;; Part 2
+
+(setq sample-input
+      "Monkey 0:
+  Starting items: 79, 98
+  Operation: new = old * 19
+  Test: divisible by 23
+    If true: throw to monkey 2
+    If false: throw to monkey 3
+
+Monkey 1:
+  Starting items: 54, 65, 75, 74
+  Operation: new = old + 6
+  Test: divisible by 19
+    If true: throw to monkey 2
+    If false: throw to monkey 0
+
+Monkey 2:
+  Starting items: 79, 60, 97
+  Operation: new = old * old
+  Test: divisible by 13
+    If true: throw to monkey 1
+    If false: throw to monkey 3
+
+Monkey 3:
+  Starting items: 74
+  Operation: new = old + 3
+  Test: divisible by 17
+    If true: throw to monkey 0
+    If false: throw to monkey 1")
+
+;;; day11.el ends here
