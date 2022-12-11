@@ -170,8 +170,8 @@
     (seq-reduce
      (lambda (state item)
        (let* ((new-worry-level (funcall .operation item))
-              (moderated-worry-level (if (> new-worry-level .test)
-                                         (floor new-worry-level .test)
+              (moderated-worry-level (if (> new-worry-level 96577)
+                                         (floor new-worry-level 96577)
                                        new-worry-level))
               (target-monkey
                (if (mod moderated-worry-level .test)
@@ -222,14 +222,16 @@
               (mod 17)) ; -> monkey 1
 
 (thread-first (* 79 19)
-              (floor 23)
+              (floor 96577)
+              ;(floor (* 23 17))
               (+ 3)
               (mod 17)
-              ) ; -> monkey 0
+              ) ; -> monkey 1
 
 (monkey-business-v2-for sample-input 1)
 (monkey-business-v2-for sample-input 20)
 (monkey-business-v2-for sample-input 1000) ;; Arithmetic overflow!
+(* 23 19 13 17) ; -> 96577
 
 (setq sample-input
       "Monkey 0:
