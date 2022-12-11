@@ -136,6 +136,19 @@
 
 (parse-test-part-v2 "Test: divisible by 19")
 
+(defun install-worry-regulators (state)
+  "Install worry regulators for STATE."
+  (let ((worry-regulators (mapcar (lambda (monkey) (alist-get 'test monkey)) state)))
+    (mapcar
+     (lambda (monkey)
+       (setf (alist-get 'worry-regulators monkey) worry-regulators)
+       (setf (alist-get 'items monkey)
+             (mapcar (lambda (item) (make-list (seq-length worry-regulators)
+                                               item))
+                     (alist-get 'items monkey)))
+       monkey)
+     state)))
+
 (defun parse-starting-condition-v2 (s)
   "Parse starting condition from S."
   (thread-last
@@ -144,7 +157,12 @@
      (lambda (monkey-state)
        (seq-let (monkey-n item-part op-part test-part then-part else-part)
            (mapcar #'string-trim (string-lines (string-trim monkey-state)))
-         `((name . ,monkey-n)
+         `((name . ,(thread-last
+                      monkey-n
+                      (string-remove-prefix "Monkey ")
+                      (string-remove-suffix ":")
+                      string-to-number))
+           ,(cons 'worry-regulators nil)
            ,(cons 'inspected-items 0)
            (items . ,(let ((parts (thread-first
                                     item-part
@@ -161,20 +179,31 @@
            (false-op . ,(string-to-number
                          (string-remove-prefix
                           "If false: throw to monkey "
-                          else-part)))))))))
+                          else-part)))))))
+    install-worry-regulators))
 
+(parse-starting-condition-v2 sample-input)
 
 (defun perform-monkey-round-v2 (state monkey)
   "Perform actions of a single MONKEY on STATE."
   (let-alist monkey
     (seq-reduce
-     (lambda (state item)
-       (let* ((new-worry-level (funcall .operation item))
-              (moderated-worry-level (if (> new-worry-level 96577)
-                                         (floor new-worry-level 96577)
-                                       new-worry-level))
+     (lambda (state worry-levels)
+       (let* ((new-worry-levels (mapcar (lambda (item)
+                                          (funcall .operation item))
+                                        worry-levels))
+              (moderated-worry-levels
+               (seq-map-indexed
+                (lambda (item n)
+                  (let ((worry-regulator (elt .worry-regulators n)))
+                    (mod item worry-regulator)))
+                new-worry-levels))
               (target-monkey
-               (if (mod moderated-worry-level .test)
+               (if (= 0 (mod
+                         (elt
+                          moderated-worry-levels
+                          .name)
+                         .test))
                    (elt state .true-op)
                  (elt state .false-op)))
               (target-items
@@ -182,7 +211,8 @@
          (setf (alist-get 'inspected-items monkey)
                (+ (alist-get 'inspected-items monkey) 1))
          (setf (alist-get 'items target-monkey)
-               (append target-items (list moderated-worry-level)))
+               (append target-items (list
+                                     moderated-worry-levels)))
          (setf (alist-get 'items monkey)
                nil)
          state))
@@ -204,34 +234,64 @@
                          (number-sequence 1 rounds)
                          initial-state))))
 
-    ;; (apply '*
-    ;;        (thread-first
-    ;;          (mapcar (lambda (monkey) (alist-get 'inspected-items monkey)) final-state)
-    ;;          (sort #'>)
-    ;;          (seq-take 2)))
-    final-state))
+    (apply '*
+           (thread-first
+             (mapcar (lambda (monkey) (alist-get 'inspected-items monkey)) final-state)
+             (sort #'>)
+             (seq-take 2)))))
 
 (let ((state (parse-starting-condition-v2 sample-input)))
-  state
-  ;(perform-monkey-round-v2 state (car state))
+  (seq-reduce
+   (lambda (state monkey)
+     (perform-monkey-round-v2 state monkey))
+   (seq-take state 1)
+   state)
   )
 
-(thread-first (* 79 19)
-              ; (mod 23)
-              (+ 3)
-              (mod 17)) ; -> monkey 1
-
-(thread-first (* 79 19)
-              (floor 96577)
-              ;(floor (* 23 17))
-              (+ 3)
-              (mod 17)
-              ) ; -> monkey 1
-
 (monkey-business-v2-for sample-input 1)
+;; Should be:
+;; == After round 1 ==
+;; Monkey 0 inspected items 2 times.
+;; Monkey 1 inspected items 4 times.
+;; Monkey 2 inspected items 3 times.
+;; Monkey 3 inspected items 6 times.
+;; (+ 2 4 3 6) ; 15
+
+(monkey-business-v2-for sample-input 2)
+
 (monkey-business-v2-for sample-input 20)
+;; == After round 20 ==
+;; Monkey 0 inspected items 99 times.
+;; Monkey 1 inspected items 97 times.
+;; Monkey 2 inspected items 8 times.
+;; Monkey 3 inspected items 103 times.
+;; (+ 99 97 8 103) -> 307
+;; (+ 96 100 5 102) -> 303
+
 (monkey-business-v2-for sample-input 1000) ;; Arithmetic overflow!
-(* 23 19 13 17) ; -> 96577
+
+;; == After round 1000 ==
+;; Monkey 0 inspected items 5204 times.
+;; Monkey 1 inspected items 4792 times.
+;; Monkey 2 inspected items 199 times.
+;; Monkey 3 inspected items 5192 times.
+
+(monkey-business-v2-for sample-input 10000)
+;; 2713310158
+;; 2713310158 -- correct!
+;; == After round 10000 ==
+;; Monkey 0 inspected items 52166 times.
+;; Monkey 1 inspected items 47830 times.
+;; Monkey 2 inspected items 1938 times.
+;; Monkey 3 inspected items 52013 times.
+
+(with-current-buffer (find-file-noselect "./input")
+  (monkey-business-v2-for (buffer-substring-no-properties (point-min) (point-max))
+                          10000))
+
+;; 21800916620
+
+
 
 (setq sample-input
       "Monkey 0:
