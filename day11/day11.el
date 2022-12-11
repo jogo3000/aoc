@@ -69,12 +69,9 @@
   (let-alist monkey
     (seq-reduce
      (lambda (state item)
-       (message "item %s" item)
        (let* ((new-worry-level (thread-first (funcall .operation item) (/ 3)))
               (target-monkey
-               (if (let ((which? (funcall .test new-worry-level)))
-                     (message "%s" which?)
-                     which?)
+               (if (funcall .test new-worry-level)
                    (elt state .true-op)
                  (elt state .false-op)))
               (target-items
@@ -104,14 +101,14 @@
   perform-round
   perform-round)
 
-(defun monkey-business-for (input)
-  "Play 20 rounds of monkey business on INPUT."
+(defun monkey-business-for (input rounds)
+  "Play ROUNDS of monkey business on INPUT."
   (let* ((initial-state (parse-starting-condition input))
          (final-state (thread-last
                         (seq-reduce
                          (lambda (state _)
                            (perform-round state))
-                         (number-sequence 1 20)
+                         (number-sequence 1 rounds)
                          initial-state))))
 
     (apply '*
@@ -120,16 +117,119 @@
              (sort #'>)
              (seq-take 2)))))
 
-(monkey-business-for sample-input)
+(monkey-business-for sample-input 20)
 ;; 10605 - ok!
 
 (with-current-buffer (find-file-noselect "./input")
   (monkey-business-for (buffer-substring-no-properties (point-min)
-                                                       (point-max))))
+                                                       (point-max))
+                       20))
 
 ;; 66802
 
 ;; Part 2
+
+(defun parse-test-part-v2 (test-part)
+  "Get modcount from TEST-PART."
+  (string-to-number
+   (string-remove-prefix "Test: divisible by " test-part)))
+
+(parse-test-part-v2 "Test: divisible by 19")
+
+(defun parse-starting-condition-v2 (s)
+  "Parse starting condition from S."
+  (thread-last
+    (split-to-monkey-parts s)
+    (mapcar
+     (lambda (monkey-state)
+       (seq-let (monkey-n item-part op-part test-part then-part else-part)
+           (mapcar #'string-trim (string-lines (string-trim monkey-state)))
+         `((name . ,monkey-n)
+           ,(cons 'inspected-items 0)
+           (items . ,(let ((parts (thread-first
+                                    item-part
+                                    (split-string ":")
+                                    cadr
+                                    (split-string ","))))
+                       (mapcar #'string-to-number parts)))
+           (operation . ,(parse-op-part op-part))
+           (test . ,(parse-test-part-v2 test-part))
+           (true-op . ,(string-to-number
+                        (string-remove-prefix
+                         "If true: throw to monkey "
+                         then-part)))
+           (false-op . ,(string-to-number
+                         (string-remove-prefix
+                          "If false: throw to monkey "
+                          else-part)))))))))
+
+
+(defun perform-monkey-round-v2 (state monkey)
+  "Perform actions of a single MONKEY on STATE."
+  (let-alist monkey
+    (seq-reduce
+     (lambda (state item)
+       (let* ((new-worry-level (funcall .operation item))
+              (moderated-worry-level (if (> new-worry-level .test)
+                                         (floor new-worry-level .test)
+                                       new-worry-level))
+              (target-monkey
+               (if (mod moderated-worry-level .test)
+                   (elt state .true-op)
+                 (elt state .false-op)))
+              (target-items
+               (alist-get 'items target-monkey)))
+         (setf (alist-get 'inspected-items monkey)
+               (+ (alist-get 'inspected-items monkey) 1))
+         (setf (alist-get 'items target-monkey)
+               (append target-items (list moderated-worry-level)))
+         (setf (alist-get 'items monkey)
+               nil)
+         state))
+     .items
+     state)
+    state))
+
+(defun perform-round-v2 (state)
+  "Do round of monkey business on STATE."
+  (seq-reduce #'perform-monkey-round-v2 state state))
+
+(defun monkey-business-v2-for (input rounds)
+  "Play ROUNDS of monkey business on INPUT."
+  (let* ((initial-state (parse-starting-condition-v2 input))
+         (final-state (thread-last
+                        (seq-reduce
+                         (lambda (state _)
+                           (perform-round-v2 state))
+                         (number-sequence 1 rounds)
+                         initial-state))))
+
+    ;; (apply '*
+    ;;        (thread-first
+    ;;          (mapcar (lambda (monkey) (alist-get 'inspected-items monkey)) final-state)
+    ;;          (sort #'>)
+    ;;          (seq-take 2)))
+    final-state))
+
+(let ((state (parse-starting-condition-v2 sample-input)))
+  state
+  ;(perform-monkey-round-v2 state (car state))
+  )
+
+(thread-first (* 79 19)
+              ; (mod 23)
+              (+ 3)
+              (mod 17)) ; -> monkey 1
+
+(thread-first (* 79 19)
+              (floor 23)
+              (+ 3)
+              (mod 17)
+              ) ; -> monkey 0
+
+(monkey-business-v2-for sample-input 1)
+(monkey-business-v2-for sample-input 20)
+(monkey-business-v2-for sample-input 1000) ;; Arithmetic overflow!
 
 (setq sample-input
       "Monkey 0:
