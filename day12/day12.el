@@ -26,12 +26,13 @@
 
 (defun right (p width)
   "Return position right of P in a buffer of WIDTH."
-  (when (> (mod p width) 0)
+  (when (or (= 0 p) (> (mod p width) 0))
     (+ p 1)))
 
 (let ((input "SabqponmabcryxxlaccszExkacctuvwjabdefghi"))
  ;; test area
   )
+
 
 (require 'seq)
 
@@ -77,9 +78,8 @@ This works because characters in alphabet are in correct order:
 
 (require 'cl-seq)
 
-(defun djikstra (input)
-  (let ((width 8)
-        (max-pos (seq-length input))
+(defun djikstra (input width)
+  (let ((max-pos (seq-length input))
         (source (string-match "S" input))
         (target (string-match "E" input))
         (map (string-to-list input))
@@ -105,13 +105,12 @@ This works because characters in alphabet are in correct order:
               (seq-do
                (lambda (v)
                  (let ((alt (+ (elt dist u) 1)))
-                   (if (< alt (elt dist v))
-                       (setf (elt dist v) alt)
+                   (when (< alt (elt dist v))
+                     (setf (elt dist v) alt)
                      (setf (elt prev v) u))))
                (seq-filter
                 (lambda (v) (and v
                                  (seq-contains-p Q v)
-                                 (not (>= v max-pos))
                                  (legal-move? (elt input v)
                                               (elt input u))))
                 (list
@@ -132,9 +131,10 @@ This works because characters in alphabet are in correct order:
   (let ((S nil)
         (u (string-match "E" input))
         (source (string-match "S" input)))
+    (message "%s - %s - %s" u (elt prev u) source)
     (when (or (elt prev u) (= u source))
+      (message "Tänne tultiin %s" (elt prev u))
       (while u
-        (message "%s - %s - %s" source  u (elt prev u))
         (setq S (cons u S))
         (setq u (elt prev u))))
     S))
@@ -142,16 +142,27 @@ This works because characters in alphabet are in correct order:
 (with-current-buffer (find-file-noselect "./sample-input")
   (let ((input (thread-last (buffer-substring-no-properties (point-min) (point-max))
                             (string-replace "\n" ""))))
-    (seq-let (dist prev) (djikstra input)
+    (seq-let (dist prev) (djikstra input 8)
       prev
-      ;(shortest-path input dist prev)
+      ; (- (seq-length (shortest-path input dist prev)) 1)
       )))
 
-(nil nil 1 nil 3 4 5 6
- nil 1 9 3 nil 12 13 14
- nil 9 17 11 12 20 14 15
- nil 17 18 19 20 nil nil nil
- nil nil nil nil nil nil nil nil)
+
+(defvar day12-djikstra
+  (with-current-buffer (find-file-noselect "./input")
+    (let ((input (thread-last (buffer-substring-no-properties (point-min) (point-max))
+                              (string-replace "\n" ""))))
+      (djikstra input 180))))
+
+
+(with-current-buffer (find-file-noselect "./input")
+  (let ((input (thread-last (buffer-substring-no-properties (point-min) (point-max))
+                            (string-replace "\n" ""))))
+
+    (seq-let (dist prev) day12-djikstra
+      (shortest-path input dist prev)
+      )))
+
 
 
 ;;; day12.el ends here
