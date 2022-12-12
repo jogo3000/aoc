@@ -9,49 +9,29 @@
 
 (require 'subr-x)
 
-(defun find-marker (marker)
-  "Find MARKER in buffer of BUFFER-WIDTH."
-  (setf (point) (point-min))
-  (let ((starting-point (search-forward marker)))
-    (backward-char)
-    (point)))
-
 (defun above (p width)
   "Return position above P in a buffer of WIDTH."
-  (let ((new-pos (- p (+ width 1))))
+  (let ((new-pos (- p width)))
     (when (> new-pos 0)
       new-pos)))
 
 (defun below (p width)
   "Return position below P in a buffer of WIDTH."
-  (+ p (+ width 1)))
+  (+ p width))
 
 (defun left (p width)
   "Return position left of P in a buffer of WIDTH."
-  (when (> (mod p (+ width 1)) 1)
+  (when (> (mod p width) 1)
     (- p 1)))
-
-(left 1 8)
-(left 8 8)
-(left 9 8)
-(left 17 8)
-(left 18 8)
 
 (defun right (p width)
   "Return position right of P in a buffer of WIDTH."
-  (when (> (mod p (+ width 1)) 0)
+  (when (> (mod p width) 0)
     (+ p 1)))
 
-(right 27 8)
-
-(defun some-found (tasks)
-  "Return non-nil when some of the TASKS has found the goal."
-  (seq-some
-   (lambda (x)
-     (when (= 83 ;; S
-              (char-after (car x)))
-       x))
-   tasks))
+(let ((input "SabqponmabcryxxlaccszExkacctuvwjabdefghi"))
+ ;; test area
+  )
 
 (require 'seq)
 
@@ -62,7 +42,6 @@ This works because characters in alphabet are in correct order:
 [97 98 99 100 101 102 103 104 105 106 107 108 109
  110 111 112 113 114 115 116 117 118 119 120 121 122]."
   (when (and here there)
-    ;(message "looking at %s:%s" (char-to-string here) (char-to-string there))
 
     (let ((regulated-there (pcase there
                              (83 97)  ;; Start level with 'a'
@@ -74,64 +53,105 @@ This works because characters in alphabet are in correct order:
                             (_ here))))
       (<= (- regulated-here regulated-there) 1))))
 
-(let ((width 8)
-      (heigth 5))
-  (with-current-buffer (find-file-noselect "./sample-input")
-    (let* ((start-marker (find-marker "S"))
-           (end-marker (find-marker "E"))
-           (tasks (list (list end-marker)))
-           (rounds 0))
-      (while (and (< rounds 100) (not (some-found tasks)))
-        (setq rounds (+ rounds 1))
-        (setq tasks
-              (seq-uniq
-               (mapcan (lambda (task)
-                         (let* ((pos (car task))
-                                (current-char (char-after pos)))
-                           (seq-reduce
-                            (lambda (acc new-pos)
-                              (if (and new-pos
-                                       (not (> new-pos (point-max)))
-                                       (not (seq-contains-p task new-pos))
-                                       (legal-move? current-char (char-after new-pos)))
-                                  (cons (cons new-pos task) acc)
-                                acc))
-                            (list
-                             (left pos width)
-                             (right pos width)
-                             (above pos width)
-                             (below pos width))
-                            nil))) tasks))))
-      (some-found tasks))))
+;; Let's try Djiktra's
 
-(let ((width 180))
-  (with-current-buffer (find-file-noselect "./input")
-    (let* ((start-marker (find-marker "S"))
-           (end-marker (find-marker "E"))
-           (tasks (list (list end-marker)))
-           (rounds 0))
-      (while (and (< rounds 100) (not (some-found tasks)))
-        (setq rounds (+ rounds 1))
-        (setq tasks
-              (seq-uniq
-               (mapcan (lambda (task)
-                         (let* ((pos (car task))
-                                (current-char (char-after pos)))
-                           (seq-reduce
-                            (lambda (acc new-pos)
-                              (if (and new-pos
-                                       (not (> new-pos (point-max)))
-                                       (not (seq-contains-p task new-pos))
-                                       (legal-move? current-char (char-after new-pos)))
-                                  (cons (cons new-pos task) acc)
-                                acc))
-                            (list
-                             (left pos width)
-                             (right pos width)
-                             (above pos width)
-                             (below pos width))
-                            nil))) tasks))))
-      (seq-length (some-found tasks)))))
+;;  1  function Dijkstra(Graph, source):
+;;  2
+;;  3      for each vertex v in Graph.Vertices:
+;;  4          dist[v] ← INFINITY
+;;  5          prev[v] ← UNDEFINED
+;;  6          add v to Q
+;;  7      dist[source] ← 0
+;;  8
+;;  9      while Q is not empty:
+;; 10          u ← vertex in Q with min dist[u]
+;; 11          remove u from Q
+;; 12
+;; 13          for each neighbor v of u still in Q:
+;; 14              alt ← dist[u] + Graph.Edges(u, v)
+;; 15              if alt < dist[v]:
+;; 16                  dist[v] ← alt
+;; 17                  prev[v] ← u
+;; 18
+;; 19      return dist[], prev[]
+
+(require 'cl-seq)
+
+(defun djikstra (input)
+  (let ((width 8)
+        (max-pos (seq-length input))
+        (source (string-match "S" input))
+        (target (string-match "E" input))
+        (map (string-to-list input))
+        (prev (make-list (seq-length input) nil))
+        (dist (make-list (seq-length input) most-positive-fixnum)))
+    (setf (elt dist source) 0)
+
+    (let ((Q (number-sequence 0 (- (seq-length input) 1)))
+          (found nil))
+      (while (not (or (seq-empty-p Q) found))
+        (let ((u (cl-reduce
+                  (lambda (acc n)
+                    (let ((dist-acc (elt dist acc))
+                          (dist-n (elt dist n)))
+                      (if (< dist-n dist-acc) n acc)))
+                  Q)))
+          (if (= u target)
+              (progn (message "found!")
+                     (setq found t))
+            (progn
+              (setq Q (delete u Q))
+
+              (seq-do
+               (lambda (v)
+                 (let ((alt (+ (elt dist u) 1)))
+                   (if (< alt (elt dist v))
+                       (setf (elt dist v) alt)
+                     (setf (elt prev v) u))))
+               (seq-filter
+                (lambda (v) (and v
+                                 (seq-contains-p Q v)
+                                 (not (>= v max-pos))
+                                 (legal-move? (elt input v)
+                                              (elt input u))))
+                (list
+                 (left u width)
+                 (right u width)
+                 (above u width)
+                 (below u width))))))))
+      (list dist prev))))
+
+;; 1  S ← empty sequence
+;; 2  u ← target
+;; 3  if prev[u] is defined or u = source:          // Do something only if the vertex is reachable
+;; 4      while u is defined:                       // Construct the shortest path with a stack S
+;; 5          insert u at the beginning of S        // Push the vertex onto the stack
+;; 6          u ← prev[u]                           // Traverse from target to source
+
+(defun shortest-path (input dist prev)
+  (let ((S nil)
+        (u (string-match "E" input))
+        (source (string-match "S" input)))
+    (when (or (elt prev u) (= u source))
+      (while u
+        (message "%s - %s - %s" source  u (elt prev u))
+        (setq S (cons u S))
+        (setq u (elt prev u))))
+    S))
+
+(with-current-buffer (find-file-noselect "./sample-input")
+  (let ((input (thread-last (buffer-substring-no-properties (point-min) (point-max))
+                            (string-replace "\n" ""))))
+    (seq-let (dist prev) (djikstra input)
+      prev
+      ;(shortest-path input dist prev)
+      )))
+
+(nil nil 1 nil 3 4 5 6
+ nil 1 9 3 nil 12 13 14
+ nil 9 17 11 12 20 14 15
+ nil 17 18 19 20 nil nil nil
+ nil nil nil nil nil nil nil nil)
 
 
 ;;; day12.el ends here
