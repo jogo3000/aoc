@@ -12,7 +12,7 @@
 (defun above (p width)
   "Return position above P in a buffer of WIDTH."
   (let ((new-pos (- p width)))
-    (when (> new-pos 0)
+    (when (>= new-pos 0)
       new-pos)))
 
 (defun below (p width)
@@ -21,7 +21,7 @@
 
 (defun left (p width)
   "Return position left of P in a buffer of WIDTH."
-  (when (> (mod p width) 1)
+  (when (>= (mod p width) 1)
     (- p 1)))
 
 (defun right (p width)
@@ -31,8 +31,8 @@
 
 (let ((input "SabqponmabcryxxlaccszExkacctuvwjabdefghi"))
  ;; test area
+  (string-match "S" input)
   )
-
 
 (require 'seq)
 
@@ -52,7 +52,7 @@ This works because characters in alphabet are in correct order:
                             (83 97)
                             (69 122)
                             (_ here))))
-      (<= (- regulated-here regulated-there) 1))))
+      (<= (- regulated-there regulated-here) 1))))
 
 ;; Let's try Djiktra's
 
@@ -77,14 +77,17 @@ This works because characters in alphabet are in correct order:
 ;; 19      return dist[], prev[]
 
 (require 'cl-seq)
+(left 1 181)
 
 (defun djikstra (input width)
+  (setq case-fold-search nil)
   (let ((max-pos (seq-length input))
         (source (string-match "S" input))
         (target (string-match "E" input))
         (map (string-to-list input))
         (prev (make-list (seq-length input) nil))
         (dist (make-list (seq-length input) most-positive-fixnum)))
+    (message "target here: %s" target)
     (setf (elt dist source) 0)
 
     (let ((Q (number-sequence 0 (- (seq-length input) 1)))
@@ -96,28 +99,27 @@ This works because characters in alphabet are in correct order:
                           (dist-n (elt dist n)))
                       (if (< dist-n dist-acc) n acc)))
                   Q)))
-          (if (= u target)
-              (progn (message "found!")
-                     (setq found t))
-            (progn
-              (setq Q (delete u Q))
+          (when (= u target)
+            (progn (message "found!")
+                   (setq found t)))
+          (setq Q (delete u Q))
 
-              (seq-do
-               (lambda (v)
-                 (let ((alt (+ (elt dist u) 1)))
-                   (when (< alt (elt dist v))
-                     (setf (elt dist v) alt)
-                     (setf (elt prev v) u))))
-               (seq-filter
-                (lambda (v) (and v
-                                 (seq-contains-p Q v)
-                                 (legal-move? (elt input v)
-                                              (elt input u))))
-                (list
-                 (left u width)
-                 (right u width)
-                 (above u width)
-                 (below u width))))))))
+          (seq-do
+           (lambda (v)
+             (let ((alt (+ (elt dist u) 1)))
+               (when (< alt (elt dist v))
+                 (setf (elt dist v) alt)
+                 (setf (elt prev v) u))))
+           (seq-filter
+            (lambda (v) (and v
+                             (seq-contains-p Q v)
+                             (legal-move? (elt input u)
+                                          (elt input v))))
+            (list
+             (left u width)
+             (right u width)
+             (above u width)
+             (below u width))))))
       (list dist prev))))
 
 ;; 1  S ← empty sequence
@@ -131,6 +133,7 @@ This works because characters in alphabet are in correct order:
   (let ((S nil)
         (u (string-match "E" input))
         (source (string-match "S" input)))
+    (message "%s" (seq-length (seq-filter 'identity prev)))
     (message "%s - %s - %s" u (elt prev u) source)
     (when (or (elt prev u) (= u source))
       (message "Tänne tultiin %s" (elt prev u))
@@ -143,26 +146,45 @@ This works because characters in alphabet are in correct order:
   (let ((input (thread-last (buffer-substring-no-properties (point-min) (point-max))
                             (string-replace "\n" ""))))
     (seq-let (dist prev) (djikstra input 8)
-      prev
-      ; (- (seq-length (shortest-path input dist prev)) 1)
+      (- (seq-length (shortest-path input dist prev)) 1)
       )))
 
 
 (defvar day12-djikstra
   (with-current-buffer (find-file-noselect "./input")
+    (setq case-fold-search nil)
     (let ((input (thread-last (buffer-substring-no-properties (point-min) (point-max))
                               (string-replace "\n" ""))))
-      (djikstra input 180))))
+      (djikstra input 181))))
 
 
 (with-current-buffer (find-file-noselect "./input")
+  (setq case-fold-search nil)
   (let ((input (thread-last (buffer-substring-no-properties (point-min) (point-max))
                             (string-replace "\n" ""))))
 
     (seq-let (dist prev) day12-djikstra
-      (shortest-path input dist prev)
+      ; dist
+       (- (seq-length (shortest-path input dist prev)) 1)
       )))
 
+(with-current-buffer (find-file-noselect "./input")
+  (setq case-fold-search nil)
+  (let ((input (thread-last (buffer-substring-no-properties (point-min) (point-max))
+                            )))
+    (seq-length (string-to-list (car (string-lines input))))))
 
+(with-current-buffer (find-file-noselect "./sample-2")
+  (let ((input (thread-last (buffer-substring-no-properties (point-min) (point-max))
+                            (string-replace "\n" ""))))
+    (seq-let (dist prev) (djikstra input 74)
+      (seq-length (shortest-path input dist prev)))))
+
+(with-current-buffer (find-file-noselect "./sample-input3")
+  (setq case-fold-search nil)
+  (let ((input (thread-last (buffer-substring-no-properties (point-min) (point-max))
+                            (string-replace "\n" ""))))
+    (seq-let (dist prev) (djikstra input 10)
+      (shortest-path input dist prev))))
 
 ;;; day12.el ends here
