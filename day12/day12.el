@@ -84,9 +84,9 @@ This works because characters in alphabet are in correct order:
   (let ((max-pos (seq-length input))
         (target (string-match "S" input))
         (source (string-match "E" input))
-        (map (string-to-list input))
-        (prev (make-list (seq-length input) nil))
-        (dist (make-list (seq-length input) most-positive-fixnum)))
+        (map (apply 'vector (string-to-list input)))
+        (prev (apply 'vector (make-list (seq-length input) nil)))
+        (dist (apply 'vector (make-list (seq-length input) most-positive-fixnum))))
     (message "target here: %s" target)
     (setf (elt dist source) 0)
 
@@ -150,25 +150,12 @@ This works because characters in alphabet are in correct order:
       )))
 
 
-(defvar day12-djikstra
-  (with-current-buffer (find-file-noselect "./input")
-    (setq case-fold-search nil)
-    (let ((input (thread-last (buffer-substring-no-properties (point-min) (point-max))
-                              (string-replace "\n" ""))))
-      (djikstra input 181))))
-
-day12-djikstra
-
-
 (with-current-buffer (find-file-noselect "./input")
   (setq case-fold-search nil)
   (let ((input (thread-last (buffer-substring-no-properties (point-min) (point-max))
                             (string-replace "\n" ""))))
-
-    (seq-let (dist prev) day12-djikstra
-                                        ; dist
-      (- (seq-length (shortest-path input dist prev)) 1)
-      )))
+    (seq-let (dist prev) (djikstra input 181)
+      (- (seq-length (shortest-path input dist prev)) 1))))
 
 ;; Shortest path - 528
 
