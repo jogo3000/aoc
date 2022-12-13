@@ -157,6 +157,8 @@ This works because characters in alphabet are in correct order:
                               (string-replace "\n" ""))))
       (djikstra input 181))))
 
+day12-djikstra
+
 
 (with-current-buffer (find-file-noselect "./input")
   (setq case-fold-search nil)
@@ -164,27 +166,95 @@ This works because characters in alphabet are in correct order:
                             (string-replace "\n" ""))))
 
     (seq-let (dist prev) day12-djikstra
-      ; dist
-       (- (seq-length (shortest-path input dist prev)) 1)
+                                        ; dist
+      (- (seq-length (shortest-path input dist prev)) 1)
       )))
+
+;; Shortest path - 528
+
+
+;;; part 2
+
+(defun djikstra2 (input width)
+  (setq case-fold-search nil)
+  (let ((max-pos (seq-length input))
+        (source (string-match "E" input))
+        (map (string-to-list input))
+        (prev (make-list (seq-length input) nil))
+        (dist (make-list (seq-length input) most-positive-fixnum)))
+    (setf (elt dist source) 0)
+
+    (let ((Q (number-sequence 0 (- (seq-length input) 1)))
+          (found nil))
+      (while (not (or (seq-empty-p Q) found))
+        (let ((u (cl-reduce
+                  (lambda (acc n)
+                    (let ((dist-acc (elt dist acc))
+                          (dist-n (elt dist n)))
+                      (if (< dist-n dist-acc) n acc)))
+                  Q)))
+          (when (= (elt input u) 97) ; When reached 'a'
+            (progn (message "found!")
+                   (setq found u)))
+          (setq Q (delete u Q))
+
+          (seq-do
+           (lambda (v)
+             (let ((alt (+ (elt dist u) 1)))
+               (when (< alt (elt dist v))
+                 (setf (elt dist v) alt)
+                 (setf (elt prev v) u))))
+           (seq-filter
+            (lambda (v) (and v
+                             (seq-contains-p Q v)
+                             (legal-move? (elt input u)
+                                          (elt input v))))
+            (list
+             (left u width)
+             (right u width)
+             (above u width)
+             (below u width))))))
+      (list dist prev found))))
+
+;; 1  S ← empty sequence
+;; 2  u ← target
+;; 3  if prev[u] is defined or u = source:          // Do something only if the vertex is reachable
+;; 4      while u is defined:                       // Construct the shortest path with a stack S
+;; 5          insert u at the beginning of S        // Push the vertex onto the stack
+;; 6          u ← prev[u]                           // Traverse from target to source
+
+(defun shortest-path2 (input dist prev u)
+  (let ((S nil)
+        (source (string-match "E" input)))
+    (when (or (elt prev u) (= u source))
+      (while u
+        (setq S (cons u S))
+        (setq u (elt prev u))))
+    S))
+
+
+(defvar day12-djikstra2
+  (with-current-buffer (find-file-noselect "./input")
+    (setq case-fold-search nil)
+    (let ((input (thread-last (buffer-substring-no-properties (point-min) (point-max))
+                              (string-replace "\n" ""))))
+      (djikstra2 input 181))))
+
+(last day12-djikstra2)
+
 
 (with-current-buffer (find-file-noselect "./input")
   (setq case-fold-search nil)
   (let ((input (thread-last (buffer-substring-no-properties (point-min) (point-max))
-                            )))
-    (seq-length (string-to-list (car (string-lines input))))))
-
-(with-current-buffer (find-file-noselect "./sample-2")
-  (let ((input (thread-last (buffer-substring-no-properties (point-min) (point-max))
                             (string-replace "\n" ""))))
-    (seq-let (dist prev) (djikstra input 74)
-      (seq-length (shortest-path input dist prev)))))
 
-(with-current-buffer (find-file-noselect "./sample-input3")
-  (setq case-fold-search nil)
-  (let ((input (thread-last (buffer-substring-no-properties (point-min) (point-max))
-                            (string-replace "\n" ""))))
-    (seq-let (dist prev) (djikstra input 10)
-      (shortest-path input dist prev))))
+    (seq-let (dist prev u) day12-djikstra2
+                                        ; dist
+      (- (seq-length (shortest-path2 input dist prev u)) 1)
+      )))
+
+;; 522
+
+
 
 ;;; day12.el ends here
