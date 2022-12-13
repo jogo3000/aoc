@@ -76,14 +76,6 @@
     (apply '+)))
 
 (day13-part1 "./small-input") ; 13
-
-
-(day13-part1 "./input") ; 6240 ; 6251 <- too high!
-
-
-(decisive-order? [[[]]]
-                 [[[]]])
-
 ;; 1 right
 ;; 2 right
 ;; 3 wrong
@@ -92,5 +84,36 @@
 ;; 6 right
 ;; 7 wrong
 ;; 8 wrong
+
+
+(day13-part1 "./input") ; 6240 ; 6251 <- too high!
+
+;; part 2
+(defun parse-day13-input-from-2 (f)
+  "Parse day13 input from F."
+  (thread-last (load-puzzle-input f)
+               (string-replace "," " ")
+               (string-join (list "(" ")"))
+               (read-from-string)
+               (car)))
+
+
+(defun day13-part2 (f)
+  "Solve puzzle for F."
+  (let ((ordered
+         (sort
+          (thread-last
+            (parse-day13-input-from-2 f)
+            (append (list [[2]] [[6]])))
+          (lambda (a b) (equal (decisive-order? a b) :right)))))
+    (*
+     (+ (seq-position ordered [[2]]) 1)
+     (+ (seq-position ordered [[6]]) 1))))
+
+(day13-part2 "./small-input") ; 140 <- correct!
+
+(day13-part2 "./input") ; 23142
+
+
 
 ;;; day13.el ends here
