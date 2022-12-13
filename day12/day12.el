@@ -81,22 +81,22 @@ This works because characters in alphabet are in correct order:
 
 (defun djikstra (input width)
   (setq case-fold-search nil)
-  (let ((max-pos (seq-length input))
+  (let ((max-pos (length input))
         (target (string-match "S" input))
         (source (string-match "E" input))
-        (map (apply 'vector (string-to-list input)))
-        (prev (apply 'vector (make-list (seq-length input) nil)))
-        (dist (apply 'vector (make-list (seq-length input) most-positive-fixnum))))
+        (map input)
+        (prev (apply 'vector (make-list (length input) nil)))
+        (dist (apply 'vector (make-list (length input) most-positive-fixnum))))
     (message "target here: %s" target)
-    (setf (elt dist source) 0)
+    (aset dist source 0)
 
-    (let ((Q (number-sequence 0 (- (seq-length input) 1)))
+    (let ((Q (number-sequence 0 (- (length input) 1)))
           (found nil))
       (while (not (or (seq-empty-p Q) found))
         (let ((u (cl-reduce
                   (lambda (acc n)
-                    (let ((dist-acc (elt dist acc))
-                          (dist-n (elt dist n)))
+                    (let ((dist-acc (aref dist acc))
+                          (dist-n (aref dist n)))
                       (if (< dist-n dist-acc) n acc)))
                   Q)))
           (when (= u target)
@@ -106,15 +106,15 @@ This works because characters in alphabet are in correct order:
 
           (seq-do
            (lambda (v)
-             (let ((alt (+ (elt dist u) 1)))
-               (when (< alt (elt dist v))
-                 (setf (elt dist v) alt)
-                 (setf (elt prev v) u))))
+             (let ((alt (+ (aref dist u) 1)))
+               (when (< alt (aref dist v))
+                 (aset dist v alt)
+                 (aset prev v u))))
            (seq-filter
             (lambda (v) (and v
                              (seq-contains-p Q v)
-                             (legal-move? (elt input u)
-                                          (elt input v))))
+                             (legal-move? (aref input u)
+                                          (aref input v))))
             (list
              (left u width)
              (right u width)
