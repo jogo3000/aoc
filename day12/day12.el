@@ -52,7 +52,7 @@ This works because characters in alphabet are in correct order:
                             (83 97)
                             (69 122)
                             (_ here))))
-      (<= (- regulated-there regulated-here) 1))))
+      (<= (- regulated-here regulated-there) 1))))
 
 ;; Let's try Djiktra's
 
@@ -82,8 +82,8 @@ This works because characters in alphabet are in correct order:
 (defun djikstra (input width)
   (setq case-fold-search nil)
   (let ((max-pos (seq-length input))
-        (source (string-match "S" input))
-        (target (string-match "E" input))
+        (target (string-match "S" input))
+        (source (string-match "E" input))
         (map (string-to-list input))
         (prev (make-list (seq-length input) nil))
         (dist (make-list (seq-length input) most-positive-fixnum)))
@@ -131,8 +131,8 @@ This works because characters in alphabet are in correct order:
 
 (defun shortest-path (input dist prev)
   (let ((S nil)
-        (u (string-match "E" input))
-        (source (string-match "S" input)))
+        (u (string-match "S" input))
+        (source (string-match "E" input)))
     (message "%s" (seq-length (seq-filter 'identity prev)))
     (message "%s - %s - %s" u (elt prev u) source)
     (when (or (elt prev u) (= u source))
