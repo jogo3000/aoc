@@ -14,6 +14,81 @@
 ;; 498,4 -> 498,6 -> 496,6
 ;; 503,4 -> 502,4 -> 502,9 -> 494,9
 
+(require 'seq)
+(require 'subr-x)
+
+(defun parse-scanner-data (input)
+  "Parse scanner INPUT."
+  (thread-last
+    (string-lines input)
+    (seq-map (lambda (row)
+               (thread-last
+                 (split-string row (rx whitespace "->" whitespace))
+                 (seq-map (lambda (pair)
+                            (seq-let (x y) (split-string pair ",")
+                              `(,(string-to-number x)
+                                .
+                                ,(string-to-number y))))))))))
+
+(parse-scanner-data "498,4 -> 498,6 -> 496,6\n503,4 -> 502,4 -> 502,9 -> 494,9")
+
+(defun points-between (here there)
+  "Return list of points between HERE and THERE."
+  (let ((x1 (car here))
+        (y1 (cdr here))
+        (x2 (car there))
+        (y2 (cdr there)))
+    (cond
+     ((= x1 x2) (seq-map (lambda (y) `(,x1 . ,y))
+                         (number-sequence y1 y2 (if (< y1 y2) 1 -1))))
+     ((= y1 y2) (seq-map (lambda (x) `(,x . ,y1))
+                         (number-sequence x1 x2 (if (< x1 x2) 1 -1))))
+     (t (error (format "Huh?! Shouldn't be possible xs: %s-%s ys: %s-%s" x1 x2 y1 y2))))))
+
+(defun interpret-path (path)
+  "Return all points in PATH."
+  (seq-reduce
+   (lambda (acc point)
+     (if (not acc)
+         (cons point acc)
+       (let ((new-points (points-between (car acc) point)))
+         (seq-reduce (lambda (acc p) (cons p acc)) new-points (cdr acc)))))
+   path
+   nil))
+
+(defun play-area (points)
+  "Return whole play area from POINTS."
+  (seq-reduce
+   (lambda (acc p)
+     (thread-first acc
+       (plist-put 'min-x (min (plist-get acc 'min-x) (car p)))
+       (plist-put 'max-x (max (plist-get acc 'max-x) (car p)))
+       (plist-put 'min-y (min (plist-get acc 'min-y) (cdr p)))
+       (plist-put 'max-y (max (plist-get acc 'max-y) (cdr p)))))
+   points
+   (list 'min-x 100000 'max-x 0 'min-y 0 'max-y 0)))
+
+
+(thread-last (parse-scanner-data "498,4 -> 498,6 -> 496,6\n503,4 -> 502,4 -> 502,9 -> 494,9")
+             (seq-mapcat 'interpret-path)
+             play-area)
+
+(with-current-buffer (get-buffer-create "*day14-render*")
+  (let* ((map (thread-last (parse-scanner-data "498,4 -> 498,6 -> 496,6\n503,4 -> 502,4 -> 502,9 -> 494,9")
+                           (seq-mapcat 'interpret-path)))
+         (limits (play-area map)))
+    (delete-region (point-min) (point-max))
+    (seq-do
+     (lambda (y)
+       (seq-do (lambda (x)
+                 (insert (if (seq-find (lambda (p) (equal p `(,x . ,y))) map)
+                             "#"
+                           ".")))
+               (number-sequence (plist-get limits 'min-x) (plist-get limits 'max-x)))
+       (insert "\n"))
+     (number-sequence (plist-get limits 'min-y) (plist-get limits 'max-y)))))
+
+
 ;; Sand is pouring from 500,0
 
 ;; This kind of structure
