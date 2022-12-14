@@ -72,22 +72,50 @@
   "Return non-nil when position P is blocked on MAP."
   (seq-find (lambda (pn) (equal pn p)) map))
 
-(defun day14-render (map sand)
-  "Render MAP with SAND to a new buffer."
-  (with-current-buffer (get-buffer-create "*day14-render*")
-    (let* ((limits (play-area map)))    ; This could be done just once per map
-      (delete-region (point-min) (point-max))
-      (seq-do
-       (lambda (y)
-         (seq-do (lambda (x)
-                   (insert (cond
-                            ((place-blocked? map `(,x . ,y)) "#")
-                            ((place-blocked? sand `(,x . ,y)) "o")
-                            (t "."))))
-                 (number-sequence (plist-get limits 'min-x) (plist-get limits 'max-x)))
-         (insert "\n"))
-       (number-sequence (plist-get limits 'min-y) (plist-get limits 'max-y))))))
+(defun initialize-map (rocks)
+  "Initialize map from ROCKS."
+  (let ((limits (play-area rocks)))
+    (vconcat
+     (seq-map
+      (lambda (y)
+        (vconcat
+         (seq-map (lambda (x)
+                    (cond
+                     ((place-blocked? rocks `(,x . ,y)) "#")
+                     (t ".")))
+                  (number-sequence (plist-get limits 'min-x) (plist-get limits 'max-x)))))
+      (number-sequence (plist-get limits 'min-y) (plist-get limits 'max-y))))))
 
+(let ((rocks
+       (thread-last (parse-scanner-data "498,4 -> 498,6 -> 496,6\n503,4 -> 502,4 -> 502,9 -> 494,9")
+                    (seq-mapcat 'interpret-path))))
+  (day14-render (initialize-map rocks)))
+
+(defun day14-render (map)
+  "Render MAP to a new buffer."
+  (with-current-buffer (get-buffer-create "*day14-render*")
+    (delete-region (point-min) (point-max))
+    (seq-do
+     (lambda (row)
+       (seq-do
+        (lambda (c)
+          (insert c))
+        row)
+       (insert "\n"))
+     map)))
+
+(defun corrected-point (p limits)
+  "Return point P corrected to LIMITS."
+  `(,(- (car p) (plist-get limits 'min-x))
+    .
+    ,(cdr p)))
+
+(defun point-taken? (map limits p)
+  "Return non-nil if P is already taken on MAP with LIMITS."
+  (let ((corrected-p (corrected-point p limits)))
+    (when (and (<= 0 (car corrected-p))
+               (>= (plist-get limits 'max-y) (cdr corrected-p)))
+      (not (equal "." (aref (aref map (cdr p)) (car corrected-p)))))))
 
 (defun off-the-map? (limits point)
   "Return non-nil if POINT is off LIMITS."
@@ -108,49 +136,57 @@
 ;; longer moves, at which point the next unit of sand is created back at the
 ;; source.
 
-(defun find-resting-place (map grain)
-  "Return final resting place of GRAIN on MAP."
-  (let ((limits (play-area map))        ; This could be done just once
-        (last-pos nil)
+(defun find-resting-place (map limits grain)
+  "Return final resting place of GRAIN on MAP with LIMITS."
+  (let ((last-pos nil)
         (current-pos grain)
         (rounds 0))
     (while (and
-            (< rounds 1000)                    ;; avoid infinite loop
+            (< rounds 1000000) ;; avoid infinite loop
             (not (equal last-pos current-pos)) ;; stop when at rest
             (not (< (plist-get limits 'max-y)
                     (cdr current-pos)))) ;; stop if it drops off the map
+      (setq last-pos current-pos)
       (setq rounds (+ rounds 1))
       (let ((down `(,(car current-pos) . ,(+ (cdr current-pos) 1))))
-        (if (not (place-blocked? map down))
+        (if (not (point-taken? map limits down))
             (setq current-pos down)
           (let ((down-left `(,(- (car down) 1) . ,(cdr down))))
-            (if (not (place-blocked? map down-left))
+            (if (not (point-taken? map limits down-left))
                 (setq current-pos down-left)
               (let ((down-right `(,(+ (car down) 1) . ,(cdr down))))
-                (when (not (place-blocked? map down-right))
+                (when (not (point-taken? map limits down-right))
                   (setq current-pos down-right))))))))
     (if (off-the-map? limits current-pos)
         :off-the-map
       current-pos)))
 
+(day14-solve-part1-on "498,4 -> 498,6 -> 496,6\n503,4 -> 502,4 -> 502,9 -> 494,9")
+
+(defun put-grain-on-map (grain map limits)
+  "Insert GRAIN to MAP with LIMITS."
+  (let ((corrected-grain (corrected-point grain limits)))
+    (aset (aref map (cdr corrected-grain))
+          (car corrected-grain)
+          "o")))
+
 (defun day14-solve-part1-on (s)
   "Solve puzzle for S."
-  (let* ((map
+  (let* ((rocks
           (thread-last (parse-scanner-data s)
                        (seq-mapcat 'interpret-path)))
-         (map-with-sand map)
-         (sand nil)
+         (map (initialize-map rocks))
+         (limits (play-area rocks))
          (rounds -1)
          (new-grain nil))
-    (while (and (< rounds 10)         ; Don't go forever
+    (while (and (< rounds 10000)           ; Don't go forever
                 (not (equal new-grain :off-the-map)))
       (setq rounds (+ rounds 1))
       ;; Sand is pouring from 500,0
-      (setq new-grain (find-resting-place map-with-sand '(500 . 0)))
+      (setq new-grain (find-resting-place map limits '(500 . 0)))
       (when (not (equal new-grain :off-the-map))
-        (setq sand (cons new-grain sand))
-        (setq map-with-sand (cons new-grain map-with-sand))))
-    (day14-render map sand)
+        (put-grain-on-map new-grain map limits)))
+    (day14-render map)
     rounds))
 
 
@@ -193,6 +229,8 @@
        (with-current-buffer (find-file-noselect "./input")
          (buffer-substring-no-properties (point-min) (point-max)))))
   (day14-solve-part1-on (string-chop-newline puzzle-input)))
+
+805
 
 
 ;;; day14.el ends here
