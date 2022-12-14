@@ -68,26 +68,72 @@
    points
    (list 'min-x 100000 'max-x 0 'min-y 0 'max-y 0)))
 
+(defun place-blocked? (map p)
+  "Return non-nil when position P is blocked on MAP."
+  (seq-find (lambda (pn) (equal pn p)) map))
 
-(thread-last (parse-scanner-data "498,4 -> 498,6 -> 496,6\n503,4 -> 502,4 -> 502,9 -> 494,9")
-             (seq-mapcat 'interpret-path)
-             play-area)
+(defun day14-render (map sand)
+  "Render MAP with SAND to a new buffer."
+  (with-current-buffer (get-buffer-create "*day14-render*")
+    (let* ((limits (play-area map)))    ; This could be done just once per map
+      (delete-region (point-min) (point-max))
+      (seq-do
+       (lambda (y)
+         (seq-do (lambda (x)
+                   (insert (cond
+                            ((place-blocked? map `(,x . ,y)) "#")
+                            ((place-blocked? sand `(,x . ,y)) "o")
+                            (t "."))))
+                 (number-sequence (plist-get limits 'min-x) (plist-get limits 'max-x)))
+         (insert "\n"))
+       (number-sequence (plist-get limits 'min-y) (plist-get limits 'max-y))))))
 
-(with-current-buffer (get-buffer-create "*day14-render*")
-  (let* ((map (thread-last (parse-scanner-data "498,4 -> 498,6 -> 496,6\n503,4 -> 502,4 -> 502,9 -> 494,9")
-                           (seq-mapcat 'interpret-path)))
-         (limits (play-area map)))
-    (delete-region (point-min) (point-max))
-    (seq-do
-     (lambda (y)
-       (seq-do (lambda (x)
-                 (insert (if (seq-find (lambda (p) (equal p `(,x . ,y))) map)
-                             "#"
-                           ".")))
-               (number-sequence (plist-get limits 'min-x) (plist-get limits 'max-x)))
-       (insert "\n"))
-     (number-sequence (plist-get limits 'min-y) (plist-get limits 'max-y)))))
 
+(defun off-the-map? (limits point)
+  "Return non-nil if POINT is off LIMITS."
+  (< (plist-get limits 'max-y) (cdr point)))
+
+(defun find-resting-place (map grain)
+  "Return final resting place of GRAIN on MAP."
+  (let ((limits (play-area map))        ; This could be done just once
+        (last-pos nil)
+        (current-pos grain)
+        (rounds 0))
+    (while (and
+            (< rounds 1000)                    ;; avoid infinite loop
+            (not (equal last-pos current-pos)) ;; stop when at rest
+            (not (< (plist-get limits 'max-y)
+                    (cdr current-pos)))) ;; stop if it drops off the map
+      (setq rounds (+ rounds 1))
+      (let ((down `(,(car current-pos) . ,(+ (cdr current-pos) 1))))
+        (if (not (place-blocked? map down))
+            (setq current-pos down)
+          (let ((down-left `(,(- (car down) 1) . ,(cdr down))))
+            (if (not (place-blocked? map down-left))
+                (setq current-pos down-left)
+              (let ((down-right `(,(+ (car down) 1) . ,(cdr down))))
+                (when (not (place-blocked? map down-right))
+                  (setq current-pos down-right))))))))
+    (if (off-the-map? limits current-pos)
+        :off-the-map
+      current-pos)))
+
+(let* ((map
+        (thread-last (parse-scanner-data "498,4 -> 498,6 -> 496,6\n503,4 -> 502,4 -> 502,9 -> 494,9")
+                     (seq-mapcat 'interpret-path)))
+       (map-with-sand map)
+       (sand nil)
+       (rounds -1)
+       (new-grain nil))
+  (while (and (< rounds 100000) ; Don't go forever
+              (not (equal new-grain :off-the-map)))
+    (setq rounds (+ rounds 1))
+    (setq new-grain (find-resting-place map-with-sand '(500 . 0)))
+    (when (not (equal new-grain :off-the-map))
+      (setq sand (cons new-grain sand))
+      (setq map-with-sand (cons new-grain map-with-sand)))
+    (day14-render map sand))
+  rounds)
 
 ;; Sand is pouring from 500,0
 
