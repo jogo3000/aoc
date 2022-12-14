@@ -9,7 +9,7 @@
 ;; of text in your scan. After the first point of each path, each point
 ;; indicates the end of a straight horizontal or vertical line to be drawn from
 ;; the previous point.
-;;
+;; (as in x,y, the first example coord is x=498, y=4
 ;; For example:
 ;; 498,4 -> 498,6 -> 496,6
 ;; 503,4 -> 502,4 -> 502,9 -> 494,9
@@ -45,5 +45,20 @@
 ;; possible destinations are blocked, the unit of sand comes to rest and no
 ;; longer moves, at which point the next unit of sand is created back at the
 ;; source.
+
+;; Final configuration of sample data
+;; .......+...
+;; .......~...
+;; ......~o...
+;; .....~ooo..
+;; ....~#ooo##
+;; ...~o#ooo#.
+;; ..~###ooo#.
+;; ..~..oooo#.
+;; .~o.ooooo#.
+;; ~#########.
+;; ~..........
+;; ~..........
+;; ~..........
 
 ;;; day14.el ends here
