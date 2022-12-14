@@ -230,7 +230,56 @@
          (buffer-substring-no-properties (point-min) (point-max)))))
   (day14-solve-part1-on (string-chop-newline puzzle-input)))
 
-805
+;; 805 - correct!
+
+
+;; part 2
+
+
+(defun find-floor-from-scan (scan)
+  "Return level of floor from SCAN."
+  (+ 2
+     (seq-reduce
+      (lambda (acc p)
+        (if (and acc (> acc (cdr p)))
+            acc
+          (cdr p)))
+      (apply 'append scan)
+      nil)))
+
+(defun day14-solve-part2-on (s guess-x1 guess-x2 max-rounds)
+  "Solve puzzle for S, guessing that floor is betweeb GUESS-X1 and GUESS-X2 taking MAX-ROUNDS."
+  (let* ((scan (parse-scanner-data s))
+         (rocks (seq-mapcat 'interpret-path scan))
+         (floor-level (find-floor-from-scan scan))
+         (rocks+floor (append (interpret-path (list `(,guess-x1 . ,floor-level) `(,guess-x2 . ,floor-level)))
+                              rocks))
+         (limits (play-area rocks+floor))
+         (map (initialize-map rocks+floor))
+         (rounds 0)
+         (new-grain nil)
+         (leak '(500 . 0)))
+    (while (and (< rounds max-rounds)           ; Don't go forever
+                (not (equal new-grain leak)))
+      (setq rounds (+ rounds 1))
+      (setq new-grain (find-resting-place map limits leak))
+      (when (not (equal new-grain :off-the-map))
+        (put-grain-on-map new-grain map limits)))
+    (day14-render map)
+    rounds))
+
+(day14-solve-part2-on "498,4 -> 498,6 -> 496,6\n503,4 -> 502,4 -> 502,9 -> 494,9" 480 530 100)
+
+;; 93 - works on sample data!
+
+
+(let ((puzzle-input
+       (with-current-buffer (find-file-noselect "./input")
+         (buffer-substring-no-properties (point-min) (point-max)))))
+  (day14-solve-part2-on (string-chop-newline puzzle-input)
+   0 1000 100000000000))
+
+;; 25161
 
 
 ;;; day14.el ends here
