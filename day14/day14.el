@@ -93,6 +93,21 @@
   "Return non-nil if POINT is off LIMITS."
   (< (plist-get limits 'max-y) (cdr point)))
 
+;; The RULES:
+;; Sand is produced one unit at a time, and the next unit of sand is not
+;; produced until the previous unit of sand comes to rest. A unit of sand is
+;; large enough to fill one tile of air in your scan.
+
+;; A unit of sand always falls down one step if possible. If the tile
+;; immediately below is blocked (by rock or sand), the unit of sand attempts to
+;; instead move diagonally one step down and to the left. If that tile is
+;; blocked, the unit of sand attempts to instead move diagonally one step down
+;; and to the right. Sand keeps moving as long as it is able to do so, at each
+;; step trying to move down, then down-left, then down-right. If all three
+;; possible destinations are blocked, the unit of sand comes to rest and no
+;; longer moves, at which point the next unit of sand is created back at the
+;; source.
+
 (defun find-resting-place (map grain)
   "Return final resting place of GRAIN on MAP."
   (let ((limits (play-area map))        ; This could be done just once
@@ -118,26 +133,28 @@
         :off-the-map
       current-pos)))
 
-(let* ((map
-        (thread-last (parse-scanner-data "498,4 -> 498,6 -> 496,6\n503,4 -> 502,4 -> 502,9 -> 494,9")
-                     (seq-mapcat 'interpret-path)))
-       (map-with-sand map)
-       (sand nil)
-       (rounds -1)
-       (new-grain nil))
-  (while (and (< rounds 100000) ; Don't go forever
-              (not (equal new-grain :off-the-map)))
-    (setq rounds (+ rounds 1))
-    (setq new-grain (find-resting-place map-with-sand '(500 . 0)))
-    (when (not (equal new-grain :off-the-map))
-      (setq sand (cons new-grain sand))
-      (setq map-with-sand (cons new-grain map-with-sand)))
-    (day14-render map sand))
-  rounds)
+(defun day14-solve-part1-on (s)
+  "Solve puzzle for S."
+  (let* ((map
+          (thread-last (parse-scanner-data s)
+                       (seq-mapcat 'interpret-path)))
+         (map-with-sand map)
+         (sand nil)
+         (rounds -1)
+         (new-grain nil))
+    (while (and (< rounds 10)         ; Don't go forever
+                (not (equal new-grain :off-the-map)))
+      (setq rounds (+ rounds 1))
+      ;; Sand is pouring from 500,0
+      (setq new-grain (find-resting-place map-with-sand '(500 . 0)))
+      (when (not (equal new-grain :off-the-map))
+        (setq sand (cons new-grain sand))
+        (setq map-with-sand (cons new-grain map-with-sand))))
+    (day14-render map sand)
+    rounds))
 
-;; Sand is pouring from 500,0
 
-;; This kind of structure
+;; Sample data starts with this kind of structure
 ;;   4     5  5
 ;;   9     0  0
 ;;   4     0  3
@@ -152,20 +169,10 @@
 ;; 8 ........#.
 ;; 9 #########.
 
-;; The RULES:
-;; Sand is produced one unit at a time, and the next unit of sand is not
-;; produced until the previous unit of sand comes to rest. A unit of sand is
-;; large enough to fill one tile of air in your scan.
+(day14-solve-part1-on "498,4 -> 498,6 -> 496,6\n503,4 -> 502,4 -> 502,9 -> 494,9")
 
-;; A unit of sand always falls down one step if possible. If the tile
-;; immediately below is blocked (by rock or sand), the unit of sand attempts to
-;; instead move diagonally one step down and to the left. If that tile is
-;; blocked, the unit of sand attempts to instead move diagonally one step down
-;; and to the right. Sand keeps moving as long as it is able to do so, at each
-;; step trying to move down, then down-left, then down-right. If all three
-;; possible destinations are blocked, the unit of sand comes to rest and no
-;; longer moves, at which point the next unit of sand is created back at the
-;; source.
+;; 24 -- Correct!
+
 
 ;; Final configuration of sample data
 ;; .......+...
@@ -181,5 +188,11 @@
 ;; ~..........
 ;; ~..........
 ;; ~..........
+
+(let ((puzzle-input
+       (with-current-buffer (find-file-noselect "./input")
+         (buffer-substring-no-properties (point-min) (point-max)))))
+  (day14-solve-part1-on (string-chop-newline puzzle-input)))
+
 
 ;;; day14.el ends here
