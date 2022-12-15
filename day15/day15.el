@@ -58,10 +58,10 @@
           (dy (abs (- ys yb))))
       (+ dx dy))))
 
-(defun manhattan-distance (p1 p2)
-  "Return manhattan distance between P1 and P2."
-  (let ((dx (abs (- (car p1) (car p2))))
-        (dy (abs (- (cdr p1) (cdr p2)))))
+(defun manhattan-distance (x1 y1 x2 y2)
+  "Return manhattan distance between points."
+  (let ((dx (abs (- x1 x2)))
+        (dy (abs (- y1 y2))))
     (+ dx dy)))
 
 (defun read-puzzle-input-from (f)
@@ -74,8 +74,8 @@
   (seq-some
    (lambda (sensor)
      (let ((distance-to-sensor (manhattan-distance
-                                p
-                                `(,(cadr sensor) . ,(caddr sensor)))))
+                                (car p) (cdr p)
+                                (cadr sensor) (caddr sensor))))
        (<= distance-to-sensor (car sensor))))
    sensors))
 
@@ -118,16 +118,7 @@
 ;; 26 - correct!
 
 ;; estimate search area
-(let ((beacons
-       (thread-first
-         (read-puzzle-input-from "./input")
-         (parse-puzzle-input)
-         find-beacons
-         )))
-  (list (find-min-x beacons)
-        (find-max-x beacons)))
-
-(-1236383 3691788)
+;; min -1236383  max 3691788
 
 
 (thread-first
@@ -143,37 +134,42 @@
 ;; part 2
 
 ;;; Ok so it only makes sense to search by the edges
-(defun neighboring-area (sensor)
+(defun neighboring-area (sensor size)
   "Return points along the edge of the SENSOR covered area."
   (let ((d (sensor-covered-area sensor))
         (points nil)
-        (center `(,(elt sensor 0) . ,(elt sensor 1))))
+        (xcenter (elt sensor 0))
+        (ycenter (elt sensor 1)))
     ;; right - up
     (let ((x (+ (elt sensor 0) d 1))
           (y (elt sensor 1)))
-      (while (= (+ d 1) (manhattan-distance `(,x . ,y) center))
-        (setq points (cons `(,x . ,y) points))
+      (while (= (+ d 1) (manhattan-distance x y xcenter ycenter))
+        (when (and (<= 0 x size) (<= 0 y size))
+          (setq points (cons `(,x . ,y) points)))
         (setq x (- x 1))
         (setq y (- y 1))))
     ;; left - up
     (let ((x (- (elt sensor 0) d 1))
           (y (elt sensor 1)))
-      (while (= (+ d 1) (manhattan-distance `(,x . ,y) center))
-        (setq points (cons `(,x . ,y) points))
+      (while (= (+ d 1) (manhattan-distance x y xcenter ycenter))
+        (when (and (<= 0 x size) (<= 0 y size))
+          (setq points (cons `(,x . ,y) points)))
         (setq x (+ x 1))
         (setq y (- y 1))))
     ;; right - down
     (let ((x (+ (elt sensor 0) d 1))
           (y (elt sensor 1)))
-      (while (= (+ d 1) (manhattan-distance `(,x . ,y) center))
-        (setq points (cons `(,x . ,y) points))
+      (while (= (+ d 1) (manhattan-distance x y xcenter ycenter))
+        (when (and (<= 0 x size) (<= 0 y size))
+          (setq points (cons `(,x . ,y) points)))
         (setq x (- x 1))
         (setq y (+ y 1))))
     ;; left - down
     (let ((x (- (elt sensor 0) d 1))
           (y (elt sensor 1)))
-      (while (= (+ d 1) (manhattan-distance `(,x . ,y) center))
-        (setq points (cons `(,x . ,y) points))
+      (while (= (+ d 1) (manhattan-distance x y xcenter ycenter))
+        (when (and (<= 0 x size) (<= 0 y size))
+            (setq points (cons `(,x . ,y) points)))
         (setq x (+ x 1))
         (setq y (+ y 1))))
     (seq-uniq points)))
@@ -225,21 +221,33 @@
  (initialize-map
   (seq-reduce
    (lambda (acc sensor)
-     (append acc (neighboring-area sensor)))
+     (append acc (neighboring-area sensor 20)))
    (thread-first
      (read-puzzle-input-from "./sample-input")
      (parse-puzzle-input))
    nil)))
 
-(defun search-area (sensors)
+(defun search-area (sensors size)
   "Determine search area from SENSORS."
   (seq-reduce
    (lambda (acc sensor)
-     (append acc (neighboring-area sensor)))
+     (let ((wavefront (neighboring-area sensor size)))
+       (if (not acc)
+           wavefront
+         (seq-union acc wavefront))))
    sensors
    nil))
 
-(defun find-uncovered-point (sensors max-x max-y)
+(thread-first
+  (read-puzzle-input-from "./sample-input")
+  (parse-puzzle-input)
+  (search-area 20)
+  initialize-map
+  day15-render)
+
+(seq-intersection nil '((1 . 0)))
+
+(defun find-uncovered-point (sensors size)
   "Find the point that is not covered by SENSORS."
   (let* ((dsensors (seq-map (lambda (sensor)
                               (cons (sensor-covered-area sensor)
@@ -248,23 +256,25 @@
          (beacons (seq-map
                    (lambda (sensor)
                      `(,(seq-elt sensor 2) . ,(seq-elt sensor 3)))
-                   sensors)))
+                   sensors))
+         (suspects (search-area sensors size)))
 
+    (message "search area size %s" (seq-length suspects))
     (seq-some
      (lambda (point)
        (when (and
-              (<= 0 (car point) max-x)
-              (<= 0 (cdr point) max-y)
+              (<= 0 (car point) size)
+              (<= 0 (cdr point) size)
               (not (point-visible? point dsensors))
               (not (seq-some (lambda (beacon) (equal point beacon)) beacons)))
          point))
-     (search-area sensors))))
+     suspects)))
 
 (let ((x (find-uncovered-point
           (thread-first
             (read-puzzle-input-from "./sample-input")
             (parse-puzzle-input))
-          20 20)))
+          20)))
   (+ (* 4000000 (car x))
      (cdr x)))
 ;; 56000011 - correct!
@@ -274,7 +284,7 @@
           (thread-first
             (read-puzzle-input-from "./input")
             (parse-puzzle-input))
-           4000000 4000000)))
+           4000000)))
   (+ (* 4000000 (car x))
      (cdr x)))
 
