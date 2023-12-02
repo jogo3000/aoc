@@ -34,12 +34,71 @@
                (tunnels (cadr (split-string right
                                             (rx "valve" (zero-or-one "s" whitespace)) t (rx whitespace)))))
            (list valve
-                 (list
-                  (string-to-number rate)
-                  (split-string tunnels "," t (rx whitespace))))))))))
-
-(parse-input (day16-sample-input))
+                 (string-to-number rate)
+                 (split-string tunnels "," t (rx whitespace)))))))))
 
 
+(defun optimized-parse (s)
+  (let* ((rows (parse-input s))
+         (keys (seq-map-indexed (lambda (row n)
+                                  `(,(car row) . ,n))
+                                rows)))
+    (plist-get
+     (seq-reduce
+      (lambda (acc row)
+        (let ((pos (plist-get acc 'pos))
+              (maze (plist-get acc 'maze)))
+          (aset maze pos (vconcat
+                          (list
+                           'closed
+                           (cadr row)
+                           (seq-map
+                            (lambda (exit)
+                              (message "%s" exit)
+                              (alist-get exit keys nil nil 'string-equal))
+                            (elt row 2)))))
+          (plist-put acc 'pos (+ pos 1))
+          (plist-put acc 'maze maze)
+          acc))
+      rows
+      (list 'pos 0
+            'maze
+            (make-vector (seq-length rows) nil)))
+     'maze)))
+
+(optimized-parse (day16-sample-input))
+
+(defun walk (maze pos flow score rounds)
+  (if (= rounds 0)
+      (+ score flow)
+    (progn
+      (let* ((posinfo (plist-get maze pos))
+             (rate (car posinfo)))
+        (when (< 0 rate)
+          (walk maze pos (+ flow rate) (+ score flow) (- rounds 1))))))
+  score)
+
+
+(defun deep-copy-vector (v)
+  (if (vectorp v)
+      (apply 'vconcat (seq-map 'deep-copy-vector (append v nil)))
+    v))
+
+(let* ((a (vector 0))
+       (b (vector a))
+       (c (deep-copy-vector b)))
+  (aset a 0 10)
+  (list a b c))
+
+(append [1] nil)
+
+
+
+
+
+(pos "AA")
+(flow 0)
+(score 0)
+(rounds 30)
 
 ;;; day16.el ends here
