@@ -29,3 +29,49 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
 
 
 (count-points (slurp "/home/uusitalo/git/aoc/aoc2023/day4/input 2.txt")) ; 21158.0
+
+;; part 2
+
+(defn count-card-values [s]
+  (->> s
+       str/split-lines
+       (map #(str/split % #"\s*[:\|]\s*"))
+       (map (fn [[card win-numbers numbers]]
+              (let [win-numbers (set (str/split win-numbers #"\s+"))
+                    card-numbers (set (str/split numbers #"\s+"))
+                    card-no (parse-long (subs card (count "Card ")))
+                    matches
+                    (count (set/intersection win-numbers card-numbers))]
+                [card-no matches])))
+       (into {})))
+
+(defn count-cards [m [card-no value]]
+  (cond
+    (nil? card-no) 0
+    (zero? value) 1
+    :else
+    (+ 1
+       (->> (range (inc card-no)
+                   (inc (+ card-no value)))
+            (map #(count-cards m [% (m %)]))
+            (reduce +)))))
+
+(def sample-card-values (count-card-values sample-input))
+
+(count-cards sample-card-values [3 (sample-card-values 3)])
+
+(reduce + (for [card (drop 2 (sort sample-card-values))]
+           (count-cards sample-card-values card)))
+
+(sort sample-card-values)
+
+(reduce +
+        (for [card sample-card-values]
+          (count-cards sample-card-values card)))
+
+(let [card-values (count-card-values (slurp "/home/uusitalo/git/aoc/aoc2023/day4/input 2.txt"))]
+  (reduce +
+        (for [card card-values]
+          (count-cards card-values card))))
+
+; 1562041 Wrong answer? But why?
