@@ -39,7 +39,7 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
        (map (fn [[card win-numbers numbers]]
               (let [win-numbers (set (str/split win-numbers #"\s+"))
                     card-numbers (set (str/split numbers #"\s+"))
-                    card-no (parse-long (subs card (count "Card ")))
+                    card-no (parse-long (str/trim (subs card (count "Card "))))
                     matches
                     (count (set/intersection win-numbers card-numbers))]
                 [card-no matches])))
@@ -74,4 +74,4 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
         (for [card card-values]
           (count-cards card-values card))))
 
-; 1562041 Wrong answer? But why?
+;; 6050769
