@@ -35,6 +35,8 @@ humidity-to-location map:
 56 93 4
 ")
 
+(defrecord Range [source source-end destination length])
+
 (defn parse-input [s]
   (->> (str/split s #"[\n\r]{2,}?")
        (map #(filter (fn [ss] (not= "map:" ss)) (str/split % #"\s+")))
@@ -45,9 +47,8 @@ humidity-to-location map:
                                       (map parse-long)
                                       (partition 3)
                                       (map (fn [[dest src c]]
-                                             {:source src
-                                              :destination dest
-                                              :length c})))])))
+                                             (->Range src (+ src (dec c)) dest c)))
+                                      (sort-by :source))])))
        (into {})))
 
 
