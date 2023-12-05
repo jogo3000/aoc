@@ -57,28 +57,37 @@ humidity-to-location map:
   (parse-input sample-input))
 
 (defn navigate [ranges n]
-  (if-let [dest (some (fn [{:keys [source destination] l :length}]
-                        (when (<= source n (+ source l))
-                          (+ destination (- n source))))
-                      ranges)]
-    dest
-    n))
+  (loop [[curr & others] ranges]
+    (cond
+      (not curr) n
+      (> (:source curr)  n) n
+      (and (<= (:source curr) n)
+           (<= n (:source-end curr))) (+ (:destination curr) (- n (:source curr)))
+      :else (recur others))))
 
-(defn find-location [m n]
-  (->> n
-       (navigate (:seed-to-soil m))
-       (navigate (:soil-to-fertilizer m))
-       (navigate (:fertilizer-to-water m))
-       (navigate (:water-to-light m))
-       (navigate (:light-to-temperature m))
-       (navigate (:temperature-to-humidity m))
-       (navigate (:humidity-to-location m))))
+(defn find-location [m]
+  (let [{:keys [seed-to-soil soil-to-fertilizer fertilizer-to-water water-to-light light-to-temperature
+                temperature-to-humidity humidity-to-location]}
+        m]
+    (fn [n]
+      (->> n
+           (navigate seed-to-soil)
+           (navigate soil-to-fertilizer)
+           (navigate fertilizer-to-water)
+           (navigate water-to-light)
+           (navigate light-to-temperature)
+           (navigate temperature-to-humidity)
+           (navigate humidity-to-location)))))
 
 (defn find-lowest [m]
   (->> (:seeds m)
-       (map (partial find-location m))
+       (map (find-location m))
        sort
        first))
+
+(->> sample-input
+     parse-input
+     find-lowest) ;; 35, correct
 
 (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day5/input.txt")
      (parse-input)
