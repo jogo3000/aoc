@@ -98,13 +98,14 @@ humidity-to-location map:
 ;; part 2
 
 (defn find-lowest2 [m]
-  (let [seeds (->> (:seeds m)
+  (let [finder (find-location m)
+        seeds (->> (:seeds m)
                    (partition 2)
                    (mapcat (fn [[start l]]
                              (range start (+ start l)))))]
 
     (reduce (fn [acc n]
-              (let [loc (find-location m n)]
+              (let [loc (finder n)]
                 (if-not acc loc (min acc loc))))
             nil seeds)))
 
@@ -113,46 +114,25 @@ humidity-to-location map:
       (parse-input)
       :seeds))
 
-(reduce (fn [acc [_ l]]
-          (+ acc l)) 0 (partition 2 puzzle-seeds))
+(->> puzzle-seeds
+     (partition 2)
+     (mapcat (fn [[start l]]
+               (range start (+ start l)))))
+
+;; 2 221 837 783 searh space
+;; TOO MUCH for brute force
 
 
-;; 2 221 837 783
-;; TOO MUCH
+((find-location sample-maps) 82)
+(navigate (:seed-to-soil sample-maps) 82)
+(navigate (:soil-to-fertilizer sample-maps) 84)
+(navigate (:fertilizer-to-water sample-maps) 84)
+(navigate (:water-to-light sample-maps) 84)
+(navigate (:light-to-temperature sample-maps) 77)
 
-(+ 3127166940 109160474)
-
-(map (fn [[s l]]
-       [s (+ s l)]) (partition 2 puzzle-seeds))
-
-;; [3127166940
-;;  3236327414]
-;; [3265086325
-;;  3351535909]
-;; [1581539098
-;;  1786744824]
-;; [3646327835
-;;  3831071286]
-;; [2671979893
-;;  2689128044]
-;; [305618297
-;;  346020154]
-;; [2462071712
-;;  2665146912]
-;; [358806266
-;;  489953612]
-;; [1802185716
-;;  2340712460]
-;; [635790399
-;;  1341769649]
-
-;; Looks like the ranges aren't overlapping, need to figure out a more efficient data structure probably
-
-(:seeds sample-maps)
 
 (find-lowest2 sample-maps) ;; 46, correct
 
-(comment
-  (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day5/input.txt")
-       (parse-input)
-       (find-lowest2)))
+(println (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day5/input.txt")
+              (parse-input)
+              (find-lowest2)))
