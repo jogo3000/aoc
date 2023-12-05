@@ -48,22 +48,25 @@ humidity-to-location map:
                                       (partition 3)
                                       (map (fn [[dest src c]]
                                              (->Range src (+ src (dec c)) dest c)))
-                                      (sort-by :source))])))
+                                      (sort-by :source)
+                                      (to-array))])))
        (into {})))
 
-
+(set! *warn-on-reflection* true)
 
 (def sample-maps
   (parse-input sample-input))
 
-(defn navigate [ranges n]
-  (loop [[curr & others] ranges]
-    (cond
-      (not curr) n
-      (> (:source curr)  n) n
-      (and (<= (:source curr) n)
-           (<= n (:source-end curr))) (+ (:destination curr) (- n (:source curr)))
-      :else (recur others))))
+(defn navigate [^"[Ljava.lang.Object;" ranges n]
+  (let [len (alength ranges)]
+    (loop [i 0]
+      (if (>= i len) n
+          (let [curr (aget ranges i)]
+            (cond
+              (> (:source curr)  n) n
+              (and (<= (:source curr) n)
+                   (<= n (:source-end curr))) (+ (:destination curr) (- n (:source curr)))
+              :else (recur (inc i))))))))
 
 (defn find-location [m]
   (let [{:keys [seed-to-soil soil-to-fertilizer fertilizer-to-water water-to-light light-to-temperature
