@@ -84,3 +84,65 @@ humidity-to-location map:
      (find-lowest))
 
 ;; 218513636
+
+;; part 2
+
+(defn find-lowest2 [m]
+  (let [seeds (->> (:seeds m)
+                   (partition 2)
+                   (mapcat (fn [[start l]]
+                             (range start (+ start l)))))]
+
+    (reduce (fn [acc n]
+              (let [loc (find-location m n)]
+                (if-not acc loc (min acc loc))))
+            nil seeds)))
+
+(def puzzle-seeds
+  (-> (slurp "/home/uusitalo/git/aoc/aoc2023/day5/input.txt")
+      (parse-input)
+      :seeds))
+
+(reduce (fn [acc [_ l]]
+          (+ acc l)) 0 (partition 2 puzzle-seeds))
+
+
+;; 2 221 837 783
+;; TOO MUCH
+
+(+ 3127166940 109160474)
+
+(map (fn [[s l]]
+       [s (+ s l)]) (partition 2 puzzle-seeds))
+
+;; [3127166940
+;;  3236327414]
+;; [3265086325
+;;  3351535909]
+;; [1581539098
+;;  1786744824]
+;; [3646327835
+;;  3831071286]
+;; [2671979893
+;;  2689128044]
+;; [305618297
+;;  346020154]
+;; [2462071712
+;;  2665146912]
+;; [358806266
+;;  489953612]
+;; [1802185716
+;;  2340712460]
+;; [635790399
+;;  1341769649]
+
+;; Looks like the ranges aren't overlapping, need to figure out a more efficient data structure probably
+
+(:seeds sample-maps)
+
+(find-lowest2 sample-maps) ;; 46, correct
+
+(comment
+  (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day5/input.txt")
+       (parse-input)
+       (find-lowest2)))
