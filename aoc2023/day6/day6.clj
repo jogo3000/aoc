@@ -41,3 +41,14 @@ Distance:   644   1023   1240   1023")
      (reduce *)) ; 393120, correct
 
 ;; part 2
+
+(defn parse2 [s]
+  (->> s
+       (str/split-lines)
+       (map #(filter (fn [c] (Character/isDigit c)) %))
+       (map (comp parse-long str/join))
+       (apply (fn [t d] {:time t :distance d}))))
+
+(parse2 sample-data)
+
+(count-wins (parse2 puzzle-input))
