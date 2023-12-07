@@ -34,7 +34,7 @@ QQQJA 483")
             (= 2 (second (second cards)))) :two-pair
        (and (= 2 (second (first cards)))
             (= 1 (second (second cards)))) :one-pair
-       :else :high) (sort-by #(.indexOf card-strengths %) hand)]))
+       :else :high) hand]))
 
 (defn compare-hands [hand1 hand2]
   (let [[hand1-value hand1-cards]
@@ -76,6 +76,6 @@ QQQJA 483")
           [(sort-by #(.indexOf card-strengths %) hand) bid]))))
 
 
-(count-winnings (str/trim (slurp "/home/uusitalo/git/aoc/aoc2023/day7/input.txt")))250267628
+(count-winnings (str/trim (slurp "/home/uusitalo/git/aoc/aoc2023/day7/input.txt")))
 
-; 250202248
+;; 251121738
