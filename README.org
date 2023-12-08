@@ -1,6 +1,6 @@
 
 * Advent of code 2023
-Let's see
+Doing these in clojure
 
 * [[https://adventofcode.com/2022][Advent of code 2022]]
 
