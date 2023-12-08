@@ -64,22 +64,22 @@ XXX = (XXX, XXX)
         starting-nodes (->> nodes
                             (filter #(str/ends-with? (first %) "A"))
                             (map first))]
-    (loop [steps 0
-           turns turns
-           locations starting-nodes]
-      (let [this-step (first turns)
-            next-steps (next turns)]
-        (if (every? #(str/ends-with? % "Z") locations)
-          steps
-          (recur (inc steps)
-                 (if (empty? next-steps)
-                   turns
-                   next-steps)
-                 (for [loc locations]
-                   (cond
-                     (= this-step \R) (second (get nodes loc))
-                     (= this-step \L) (first (get nodes loc))
-                     :else (throw (Exception. (str "Not supposed to go here!: " this-step)))))))))))
+    (->> (cycle turns)
+         (reduce
+          (fn [{:keys [steps locations]} this-step]
+            (if (every? #(str/ends-with? % "Z") locations)
+              (reduced steps)
+              {:steps (inc steps)
+               :locations
+               (vec (for [loc locations]
+                      (cond
+                        (= this-step \R) (second (get nodes loc))
+                        (= this-step \L) (first (get nodes loc))
+                        :else (throw (Exception. (str "Not supposed to go here!: " this-step))))))}))
+          {:steps 0
+           :locations starting-nodes}))))
+
+(find-ghost-exit sample-input-3)
 
 (find-ghost-exit
  (slurp "/home/uusitalo/git/aoc/aoc2023/day8/input.txt"))
