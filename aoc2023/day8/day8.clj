@@ -24,7 +24,6 @@ ZZZ = (ZZZ, ZZZ)
     (loop [steps 0
            [this-step & next-steps] (cycle turns)
            here "AAA"]
-      (println here)
       (if (= here "ZZZ")
         steps
         (recur (inc steps)
@@ -45,3 +44,42 @@ ZZZ = (ZZZ, ZZZ)
 
 (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day8/input.txt")
      find-exit) ;; 22199
+
+
+;; part 2
+(def sample-input-3 "LR
+
+11A = (11B, XXX)
+11B = (XXX, 11Z)
+11Z = (11B, XXX)
+22A = (22B, XXX)
+22B = (22C, 22C)
+22C = (22Z, 22Z)
+22Z = (22B, 22B)
+XXX = (XXX, XXX)
+")
+
+(defn find-ghost-exit [s]
+  (let [[turns nodes] (parse-input s)
+        starting-nodes (->> nodes
+                            (filter #(str/ends-with? (first %) "A"))
+                            (map first))]
+    (loop [steps 0
+           turns turns
+           locations starting-nodes]
+      (let [this-step (first turns)
+            next-steps (next turns)]
+        (if (every? #(str/ends-with? % "Z") locations)
+          steps
+          (recur (inc steps)
+                 (if (empty? next-steps)
+                   turns
+                   next-steps)
+                 (for [loc locations]
+                   (cond
+                     (= this-step \R) (second (get nodes loc))
+                     (= this-step \L) (first (get nodes loc))
+                     :else (throw (Exception. (str "Not supposed to go here!: " this-step)))))))))))
+
+(find-ghost-exit
+ (slurp "/home/uusitalo/git/aoc/aoc2023/day8/input.txt"))
