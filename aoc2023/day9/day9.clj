@@ -40,3 +40,23 @@
      (reduce +))
 
 ;; 1916822650
+
+;; Part 2
+
+(defn extrapolate [line]
+  (let [ts (reverse (triangulate line))]
+    (reduce (fn [acc n]
+              (* -1 (- acc (first n)))) 0 ts)))
+
+(->> sample-input-1
+     str/split-lines
+     (map extrapolate)
+     (reduce +))
+
+(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day9/input.txt")
+     str/trim
+     str/split-lines
+     (map extrapolate)
+     (reduce +))
+
+; 966
