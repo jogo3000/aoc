@@ -171,33 +171,35 @@ LJ.LJ")
 
 (defn neighbouring-cells [pipe side]
   (let [pipe-cells (set pipe)]
-    (disj (set
-           (for [[p p'] (partition 2 1 pipe)]
-             (let [r (side p (direction p p'))]
-               (when-not (or (pipe-cells r)
-                             (some neg? r)) r)))) nil)))
+    (disj (into #{}
+                (mapcat identity)
+                (for [[p p'] (partition 2 1 pipe)]
+                  (let [r (side p (direction p p'))
+                        r' (side p' (direction p p'))]
+                    [(when-not (or (pipe-cells r)
+                                   (some neg? r)) r)
+                     (when-not (or (pipe-cells r')
+                                   (some neg? r')) r')]))) nil)))
 
-(let [pipe (find-pipe sample-1)]
-  [(neighbouring-cells pipe left)
-   (neighbouring-cells pipe right)])
-
-[#{[2 2]}
- #{[1 0] [3 4] [4 2] [4 1] [0 3] [2 4] [0 2] [2 0]}]
-
-(let [pipe (find-pipe sample-3)]
-  [(neighbouring-cells pipe left)
-   (neighbouring-cells pipe right)])
-
-[#{[2 2]}
- #{[4 3] [1 0] [4 2] [1 4] [5 0] [3 5] [0 1]}]
-
-(let [pipe (find-pipe sample-5)]
-  [(neighbouring-cells pipe left)
-   (neighbouring-cells pipe right)])
-
-[#{[6 7] [6 3] [6 8] [6 2]}
- #{[8 8] [8 7] [4 3] [1 0] [8 3] [0 6] [3 3] [5 10] [0 5] [3 4] [8 6] [3 0] [4 7] [4 10] [6 5] [0 9] [8 2] [8 1] [0 3] [0 7] [5 5] [3 6] [7 10] [0 2] [2 0] [0 4] [3 10] [6 10] [4 4] [3 7] [2 10] [7 5] [5 0] [6 0] [3 5] [0 8] [4 0]}]
-
+(defn find-chirality [pipe]
+  (->> pipe
+       (partition 3 1)
+       (map (fn [[p x n]]
+              (case [(direction p x)
+                     (direction x n)]
+                [:north :east] :right
+                [:north :west] :left
+                [:east :south] :right
+                [:east :north] :left
+                [:south :west] :right
+                [:south :east] :left
+                [:west :north] :right
+                [:west :south] :left
+                nil)))
+       (remove nil?)
+       (frequencies)
+       (apply max-key second)
+       first))
 
 (def sample-6 ".F----7F7F7F7F-7....
 .|F--7||||||||FJ....
@@ -209,11 +211,6 @@ L--J.L7...LJS7F-7L7.
 .....|FJLJ|FJ|F7|.LJ
 ....FJL-7.||.||||...
 ....L---J.LJ.LJLJ...")
-
-(let [pipe (find-pipe sample-6)]
-  [pipe
-   (neighbouring-cells pipe left)
-   (neighbouring-cells pipe right)])
 
 (defn visualize-part-with [input part c]
   (str/join \newline
@@ -235,14 +232,13 @@ L--J.L7...LJS7F-7L7.
   (->>
    (interleave
     (visualize-part-with sample-6 (set pipe) \*)
-    (visualize-part-with sample-6 left-sides \I)
-    (visualize-part-with sample-6 right-sides \O))
+    (visualize-part-with sample-6 left-sides \O)
+    (visualize-part-with sample-6 right-sides \I))
    (partition 3)
    (map (fn [[a b c]]
           (cond
-            (and (= b \I) (= c\O)) \!
-            (= b \I) b
-            (= c \O) c
+            (= c \I) c
+            (= b \O) b
             :else a)))
    str/join
    println ))
@@ -250,3 +246,64 @@ L--J.L7...LJS7F-7L7.
 (println sample-6)
 
 (println (visualize-pipe sample-6))
+
+(defn find-interior-cells [input]
+  (let [pipe (find-pipe input)
+        chirality (find-chirality pipe)
+        some-interior-cells (neighbouring-cells pipe
+                                                (if (= chirality :left)
+                                                  left
+                                                  right))
+        pipe-cells (set pipe)
+        queue (into '() some-interior-cells)]
+    (loop [covered #{}
+           queue (into '() some-interior-cells)]
+      (if (empty? queue)
+        covered
+        (recur (conj covered (first queue))
+               (into (rest queue)
+                     (filter #(and (not (pipe-cells %))
+                                   (not (covered %))))
+                     (let [head (first queue)]
+                       [(north head)
+                        (west head)
+                        (south head)
+                        (east head)])))))))
+
+(find-interior-cells sample-1)
+(find-interior-cells sample-3)
+
+(find-interior-cells sample-5)
+(find-interior-cells sample-6)
+
+(def sample-7 ".F----7F7F7F7F-7....
+.|F--7||||||||FJ....
+.||.FJ||||||||L7....
+FJL7L7LJLJ||LJ.L-7..
+L--J.L7...LJS7F-7L7.
+....F-J..F7FJ|L7L7L7
+....L7.F7||L7|.L7L7|
+.....|FJLJ|FJ|F7|.LJ
+....FJL-7.||.||||...
+....L---J.LJ.LJLJ...")
+
+(count (find-interior-cells sample-7))
+
+(def sample-8 "FF7FSF7F7F7F7F7F---7
+L|LJ||||||||||||F--J
+FL-7LJLJ||||||LJL-77
+F--JF--7||LJLJ7F7FJ-
+L---JF-JLJ.||-FJLJJ7
+|F|F-JF---7F7-L7L|7|
+|FFJF7L7F-JF7|JL---7
+7-L-JL7||F7|L7F-7F7|
+L.L7LFJ|||||FJL7||LJ
+L7JLJL-JLJLJL--JLJ.L")
+
+(count (find-interior-cells sample-8))
+
+(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day10/input.txt")
+     find-interior-cells
+     count)
+
+;; 467
