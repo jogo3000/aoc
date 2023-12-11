@@ -1,5 +1,5 @@
 
-* Advent of code 2023
+* [[https://adventofcode.com/2023][Advent of code 2023]]
 Doing these in clojure
 
 * [[https://adventofcode.com/2022][Advent of code 2022]]
