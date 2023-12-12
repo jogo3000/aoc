@@ -86,10 +86,10 @@
        (map count-arrangements)
        (reduce +)))
 
-#_(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")
+(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")
      count-total-arrangements)
 
-; 7173
+;; 7173
 
 ;; part deux
 
@@ -104,56 +104,100 @@
 (parse-row (first (str/split-lines sample-2)))
 
 (defn find-possible-placements [row group]
-  (->> (count row)
-       range
-       (keep (fn [start]
-               (if-not (or (zero? start) (#{unknown operational} (.charAt row (dec start))))
-                 nil
-                 (loop [pos start
-                        c 0]
-                   (cond
-                     (>= pos (count row))
-                     (when (= c group) start)
+  (let [rowcount (count row)]
+    (->> rowcount
+         range
+         (keep (fn [start]
+                 (if-not (or (zero? start) (let [^char c (get row (dec start))]
+                                             (or (= \? c)
+                                                 (= \. c))))
+                   nil
+                   (loop [pos start
+                          c 0]
+                     (cond
+                       (>= pos rowcount)
+                       (when (= c group) start)
 
-                     (= c group)
-                     (when (#{operational unknown} (.charAt row pos)) start)
+                       (= c group)
+                       (when (let [^char c (get row pos)]
+                               (or (= \. c)
+                                   (= \? c)))
+                         start)
 
-                     (#{unknown damaged} (.charAt row pos))
-                     (recur (inc pos)
-                            (inc c))
+                       (let [^char c (get row pos)]
+                         (or (= \? c)
+                             (= \# c)))
+                       (recur (inc pos)
+                              (inc c))
 
-                     :else
-                     nil)))))))
+                       :else
+                       nil)))))
+         ;; Remove placements where known broken ones are left over
+         (remove (fn [pos]
+                   (let [s (subvec row 0 pos)]
+                     (loop [p 0
+                            bs 0]
+                       (cond
+                         (= bs group) true
+                         (= p pos) false
+                         :else
+                         (recur (inc p)
+                                (if (= \# (get row p))
+                                  (inc bs)
+                                  0))))))))))
+
+(set! *warn-on-reflection* true)
 
 (let [row "???.###"
       cs '(1 1 3)]
-  (->> (find-possible-placements row 1)))
+  (->> (find-possible-placements (vec row) 1)))
 ; (0 1 2)
 
 (defn count-arrangements2 [row cs]
-  (loop [arrs 0
-         queue (list (list row cs))]
-    (if (empty? queue) arrs
-        (let [head (first queue)
-              row (first head)
-              groups (second head)
-              c (first groups)
-              placements (find-possible-placements row c)]
-          (recur (+ arrs (if (and (empty? groups)
-                                  (every? #{unknown operational} row)) 1 0))
-                 (into (rest queue)
-                       (map #(list (subs row (min (count row)
-                                                  (+ (inc %) c)))
-                                   (rest (second head))))
-                       placements))))))
+  (let [svec (vec row)]
+    (loop [arrs 0
+           queue (list (list svec cs))]
+      (if (empty? queue) arrs
+          (let [head (first queue)
+                row (first head)
+                rowcount (count row)
+                groups (second head)
+                c (first groups)
+                placements (find-possible-placements row c)]
+            (recur (+ arrs (if (and (empty? groups)
+                                    (every? #{unknown operational} row)) 1 0))
+                   (into (rest queue)
+                         (comp
+                          (map #(list (subvec row (min rowcount
+                                                       (+ (inc %) c)))
+                                      (rest (second head))))
+                          (filter #(not (and (empty? (first %))
+                                             (seq (second %))))))
+                         placements)))))))
 
+(count-arrangements2 "?###????????" (list 3,2,1))
+
+(count-arrangements2 "?###?????????###????????" (list 3,2,1 3,2,1))
 
 (count-arrangements2 "?#?#?#?#?#?#?#?" (list 1 3,1,6))
 
+(let [[a b] (parse-row (expand-row "?###???????? 3,2,1"))]
+  (count-arrangements2 a b))
+
+506250
+826550
+
 (->> sample-2
      str/split-lines
-     #_(map expand-row)
+     (map expand-row)
      (map parse-row)
      (map (fn [[r c]] (count-arrangements2 r c))))
 
-;; Clearly not fast enough to do it. Must limit the amount of work done
+
+(def *arrs
+  (doall
+   (->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")
+        str/split-lines
+        (map expand-row)
+        (map parse-row)
+        (map (fn [[r c]] (count-arrangements2 r c))))))
