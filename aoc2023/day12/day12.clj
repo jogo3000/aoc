@@ -86,7 +86,7 @@
        (map count-arrangements)
        (reduce +)))
 
-(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")
+#_(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")
      count-total-arrangements)
 
 ; 7173
@@ -99,9 +99,61 @@
          " "
          (str/join \, (repeat 5 counts)))))
 
-#_(->> sample-2
-       str/split-lines
-       (map expand-row)
-       (map count-arrangements))
+
+
+(parse-row (first (str/split-lines sample-2)))
+
+(defn find-possible-placements [row group]
+  (->> (count row)
+       range
+       (keep (fn [start]
+               (if-not (or (zero? start) (#{unknown operational} (.charAt row (dec start))))
+                 nil
+                 (loop [pos start
+                        c 0]
+                   (cond
+                     (>= pos (count row))
+                     (when (= c group) start)
+
+                     (= c group)
+                     (when (#{operational unknown} (.charAt row pos)) start)
+
+                     (#{unknown damaged} (.charAt row pos))
+                     (recur (inc pos)
+                            (inc c))
+
+                     :else
+                     nil)))))))
+
+(let [row "???.###"
+      cs '(1 1 3)]
+  (->> (find-possible-placements row 1)))
+; (0 1 2)
+
+(defn count-arrangements2 [row cs]
+  (loop [arrs 0
+         queue (list (list row cs))]
+    (if (empty? queue) arrs
+        (let [head (first queue)
+              row (first head)
+              groups (second head)
+              c (first groups)
+              placements (find-possible-placements row c)]
+          (recur (+ arrs (if (and (empty? groups)
+                                  (every? #{unknown operational} row)) 1 0))
+                 (into (rest queue)
+                       (map #(list (subs row (min (count row)
+                                                  (+ (inc %) c)))
+                                   (rest (second head))))
+                       placements))))))
+
+
+(count-arrangements2 "?#?#?#?#?#?#?#?" (list 1 3,1,6))
+
+(->> sample-2
+     str/split-lines
+     #_(map expand-row)
+     (map parse-row)
+     (map (fn [[r c]] (count-arrangements2 r c))))
 
 ;; Clearly not fast enough to do it. Must limit the amount of work done
