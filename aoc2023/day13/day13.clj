@@ -1,5 +1,6 @@
 (ns day13
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [clojure.set :as set]))
 
 (def sample1 "#.##..##.
 ..#.##.#.
@@ -38,11 +39,16 @@
                      (every? #(= (first %) (second %))))]
       rp)))
 
+(defn reflection-lines [[hz vr]]
+  [(find-mirror-pos vr)
+   (find-mirror-pos hz)])
+
+(defn appraise-lines [[hls vls]]
+  (+ (reduce + vls)
+       (->> hls (map #(* 100 %)) (reduce +))))
+
 (defn appraise [[horizontal vertical]]
-  (let [ns (find-mirror-pos vertical)
-        ks (find-mirror-pos horizontal)]
-    (+ (reduce + ns)
-       (->> ks (map #(* 100 %)) (reduce +)))))
+  (appraise-lines (reflection-lines [horizontal vertical])))
 
 (let [[horizontal vertical] (parse-input sample1)]
   (list (find-mirror-pos vertical)
@@ -74,43 +80,36 @@
         [1 (if (= d (dec n)) 2 (- n d))]
         [(* 2 n) len]))))
 
-(defn swap [[a b]]
-  [b a])
+(appraise (parse-input sample2))
 
-(defn appraise-changes [grid pos original-appraisal]
-  (let [width (count grid)]
-    (dedupe
-     (for [n (->> pos
-                  (uncovered-by-mirror width)
-                  (apply range))]
-       (let [uncovered (get grid (dec n))]
-         (keep-indexed
-          (fn [x c]
-            (let [new-map
-                  (str/join
-                   \newline
-                   (update grid (dec n)
-                           (fn [line] (str/join (assoc (vec line) x (if (= \. c) \# \.))))))
-                  new-appraisal
-                  (- (appraise (swap (parse-input new-map))) original-appraisal)]
-              (when-not (zero? new-appraisal)
-                new-appraisal))) uncovered))))))
+(defn rearrange-mirror [input]
+  (let [[hz vr] (parse-input input)
+        height (count hz)
+        width (count vr)
+        [old-hls old-vls] (reflection-lines [hz vr])]
+    (set
+     (for [y (range height)
+           x (range width)
+           :let [[up [row & down]] (split-at y hz)
+                 [left [c & right]] (split-at x row)
+                 permutation
+                 (str/join \newline
+                           (-> (vec up)
+                               (into [(str/join (-> (vec left) (into [(if (= c \.) \# \.)]) (into right)))])
+                               (into down)))
+                 [new-hls new-vls] (reflection-lines (parse-input permutation))]]
+       (appraise-lines [(set/difference (set new-vls) (set old-vls))
+                        (set/difference (set new-hls) (set old-hls))])))))
 
-;; Huh? the first reflection is still there?
-(let [[hz vr] (parse-input sample2)
-      original-appraisal (appraise [hz vr])]
-  (dedupe
-   (flatten
-    (into
-     '()
-     #_(->> (find-mirror-pos vr)
-            (mapcat
-             #(appraise-changes vr % original-appraisal)))
-     (->> (find-mirror-pos hz)
-          (mapcat
-           #(appraise-changes hz % original-appraisal)))))))
+(println (rearrange-mirror sample1))
 
-(->> sample1
-     parse-input
-     second
-     find-mirror-pos)
+(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day13/input.txt")
+     str/trim
+     parse-puzzle-input
+     (map rearrange-mirror)
+     (reduce (fn [acc n]
+               (+ (if (coll? acc)
+                    (apply + acc)
+                    acc) (apply + n)))))
+
+;; 31974
