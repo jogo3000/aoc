@@ -31,7 +31,6 @@
         (->> parts
              (partition 2 1)
              (keep-indexed (fn [i [a b]] (when (= a b) (inc i)))))]
-    (println (vec reflection-points))
     (for [rp reflection-points
           :let [[left right] (split-at rp parts)]
           :when (->> (interleave (reverse left) right)
@@ -42,7 +41,6 @@
 (defn appraise [[horizontal vertical]]
   (let [ns (find-mirror-pos vertical)
         ks (find-mirror-pos horizontal)]
-    (println ns ks)
     (+ (reduce + ns)
        (->> ks (map #(* 100 %)) (reduce +)))))
 
@@ -53,7 +51,7 @@
 (defn parse-puzzle-input [input]
   (str/split input #"\n{2}"))
 
-(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day13/input.txt")
+(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day13/input.txt")
      str/trim
      parse-puzzle-input
      (map parse-input)
@@ -79,21 +77,40 @@
 (defn swap [[a b]]
   [b a])
 
-;; Huh? the first reflecton is still there?
-(let [[hz vr] (parse-input sample1)
-      width (count vr)
-      height (count hz)]
-  [(appraise [hz vr])
-   (for [n (->> vr
-                find-mirror-pos
-                first
-                (uncovered-by-mirror width)
-                (apply range))]
-     (let [uncovered (get vr (dec n))]
-       (keep-indexed
-        (fn [x c]
-          (let [new-map
-                (str/join \newline
-                          (update vr (dec n)
-                                  (fn [line] (str/join (assoc (vec line) x (if (= \. c) \# \.))))))]
-            (appraise (swap (parse-input new-map))))) uncovered)))])
+(defn appraise-changes [grid pos original-appraisal]
+  (let [width (count grid)]
+    (dedupe
+     (for [n (->> pos
+                  (uncovered-by-mirror width)
+                  (apply range))]
+       (let [uncovered (get grid (dec n))]
+         (keep-indexed
+          (fn [x c]
+            (let [new-map
+                  (str/join
+                   \newline
+                   (update grid (dec n)
+                           (fn [line] (str/join (assoc (vec line) x (if (= \. c) \# \.))))))
+                  new-appraisal
+                  (- (appraise (swap (parse-input new-map))) original-appraisal)]
+              (when-not (zero? new-appraisal)
+                new-appraisal))) uncovered))))))
+
+;; Huh? the first reflection is still there?
+(let [[hz vr] (parse-input sample2)
+      original-appraisal (appraise [hz vr])]
+  (dedupe
+   (flatten
+    (into
+     '()
+     #_(->> (find-mirror-pos vr)
+            (mapcat
+             #(appraise-changes vr % original-appraisal)))
+     (->> (find-mirror-pos hz)
+          (mapcat
+           #(appraise-changes hz % original-appraisal)))))))
+
+(->> sample1
+     parse-input
+     second
+     find-mirror-pos)
