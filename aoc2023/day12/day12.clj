@@ -180,22 +180,21 @@
        (map (fn [[a b]]
               (count-arrangements a b)))
        (reduce (fn [acc arrs]
-                 (+ acc (count (set arrs)))) 0)))
+                 (+ acc (count arrs))) 0)))
 
 (count-total-arrangements sample-2)
 
 (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
      count-total-arrangements)
 
-(let [[a b]
-      (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
+(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
            str/split-lines
-           (second)
-           (parse-row)
-           )]
-  (println a b)
-  (doseq [a (count-arrangements a b)]
-    (println (to-row a))))
+           (map parse-row)
+           (map (fn [[a b]]
+                  (println a b)
+                  (doseq [ar (count-arrangements a b)]
+                    (let [s (to-row ar)]
+                      (println (str (str/join (take (- (count a) (count s)) (repeat \.))) s)))))))
 
 ;; 7747 giving too high answer, but why?
 
