@@ -182,12 +182,12 @@
        (reduce (fn [acc arrs]
                  (+ acc (count arrs))) 0)))
 
-(count-total-arrangements sample-2)
+#_(count-total-arrangements sample-2)
 
-(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
+#_(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
      count-total-arrangements)
 
-(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
+#_(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
            str/split-lines
            ((fn [s] (subvec s 40 41)))
            (map parse-row)
@@ -197,41 +197,13 @@
                     (let [s (to-row ar)]
                       (println (str (str/join (take (- (count a) (count s)) (repeat \.))) s)))))))
 
-(def *arrs-1
+#_(def *arrs-1
   (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
        str/split-lines
        (map parse-row)
        (map-indexed (fn [i [a b]]
                       [i (count-arrangements a b)]))))
 
-(->> "??.??.?????###? 1,2,6"
-     parse-row
-     (apply count-arrangements))
-
-(->> "?#???#?#?????? 1,3,3"
-     parse-row
-     (apply count-arrangements))
-
-; (6000 5916 5902 5895 4572 4558 4551 4215)
-
-; (1046056 1044586 1044585 261226 261225 130666 130665)
-
-(println "??.??.?????###? 1,2,6")
-(->> "??.??.?????###? 1,2,6"
-     day12-old/count-arrangements)
-; 5
-
-(println "?????#???#?.??#?#??? 8,2,1,1")
-(->> "?????#???#?.??#?#??? 8,2,1,1"
-     day12-old/count-arrangements)
-
-(clojure.set/difference
- (set (map #(update % 1 count) *arrs-1))
- (set *arrs-old))
-
-(def *arrs-old
-  (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
-       day12-old/total-arrangements-per-line))
 
 ;; 7747 giving too high answer, but why?
 
@@ -245,12 +217,6 @@
          " "
          (str/join \, (repeat 5 counts)))))
 
-
-
-(parse-row (first (str/split-lines sample-2)))
-
-
-
 (count (find-unknowns "??.??.???###????#??????.??.???###????#??????.??.???###????#??????.??.???###????#??????.??.???###????#???"))
 
 ;; 74, amount of permutations 2^74, that's not going to fly
@@ -262,38 +228,15 @@
       c
       (recur (inc c) (.shiftRight n 1)))))
 
-
-
-
-
 (set! *warn-on-reflection* true)
 
-(let [row "???.###"
-      cs '(1 1 3)]
-  (->> (find-possible-placements (vec row) 0 1)))
-; (0 1 2)
 
-
-
-
-
-(->> sample-2
-     str/split-lines
-     (map expand-row)
-     (map parse-row)
-     (map (fn [[r c]] (count-arrangements2 r c))))
-
-
-(->> (expand-row ".???.??.?? 1,1,1")
-     parse-row
-     (apply count-arrangements2))
-
-(def *arrs
+#_(def *arrs
   (doall
-   (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
+   (->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")
         str/split-lines
         (map expand-row)
         (map parse-row)
         (map-indexed (fn [i [r c]]
                (println i)
-               (count-arrangements2 r c))))))
+               (count-arrangements r c))))))
