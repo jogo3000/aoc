@@ -1,6 +1,9 @@
 (ns day12
   (:require [clojure.string :as str]))
 
+(set! *warn-on-reflection* true)
+
+
 (def operational \.)
 (def damaged \#)
 (def unknown \?)
@@ -145,9 +148,8 @@
         rowcount (count row)
         ^BigInteger mask (to-mask row)]
     (loop [arrs 0
-           all-arrs '()
            queue (list (->QueueTask BigInteger/ZERO 0 cs))]
-      (if (empty? queue) all-arrs
+      (if (empty? queue) arrs
           (let [head (first queue)
                 ^BigInteger c (:c head)
                 pos (:pos head)
@@ -160,7 +162,6 @@
                                    (every? #{unknown operational} (subvec svec pos))))]
             #_(println (to-row c) placements)
             (recur (+ arrs (if complete? 1 0))
-                   (if complete? (cons c all-arrs) all-arrs)
                    (into (rest queue)
                          (comp
                           (keep (fn [pp]
@@ -180,12 +181,13 @@
        (map (fn [[a b]]
               (count-arrangements a b)))
        (reduce (fn [acc arrs]
-                 (+ acc (count arrs))) 0)))
+                 (+ acc arrs)) 0)))
 
 #_(count-total-arrangements sample-2)
 
-#_(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
+(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")
      count-total-arrangements)
+
 
 #_(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
            str/split-lines
@@ -228,7 +230,6 @@
       c
       (recur (inc c) (.shiftRight n 1)))))
 
-(set! *warn-on-reflection* true)
 
 
 #_(def *arrs
