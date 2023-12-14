@@ -120,21 +120,58 @@ O.#..O.#.#
      (take 50)
      (map evaluate-load))
 
-(loop [loads '()
-       m (parse-input sample1)]
-  (let [m' (run-cycle m)]
-    (if (or (= 100 (count loads))
-            ;; Tähän oikea loppuehto
-            ) loads
-        (recur (cons (evaluate-load m') loads) m'))))
+(def found-loads
+  (loop [loads '()
+         m (parse-input sample1)]
+    (let [m' (run-cycle m)
+          cycle-lengths
+          (seq
+           (for [p (range 2 (count loads))
+                 :let [parts (partition p loads)]
+                 :when (and (>= (count parts) 2)
+                            (= 1 (count (set parts))))]
+             p))]
+      (if (or (= (- 1000 4) (count loads))
+              ;; Tähän oikea loppuehto
+              cycle-lengths)
+        [cycle-lengths loads]
+        (recur (cons (evaluate-load m) loads) m')))))
 
-#_(104 87 69 69 69 65 64 65 63 68
-     69 69 65 64 65 63 68
-     69 69 65 64 65 63 68
-     69 69 65 64 65 63 68
-     69 69 65 64 65 63 68
-     69 69 65 64 65 63 68
-     69 69 65 64 65)
+(let [[ls sequence] found-loads
+      cycle-len (first ls)
+      len (count sequence)
+      cycles (quot len cycle-len)
+      noncyclical (mod len cycle-len)]
+  {:cycle-len cycle-len
+   :len len
+   :cycles cycles
+   :noncyclical noncyclical
+   :result (rem (- 21 noncyclical) cycles)})
+
+{:cycle-len 7, :len 17, :cycles 2, :noncyclical 3, :result 1}
+
+
+
+;[7 17 3 3 1]
+
+; x x x [ ... ] y
+
+(clojure.pprint/pprint (partition 7 (second found-loads)))
+
+(count (second found-loads))
+
+'(65 69 69
+  68 63 65 64 65 69 69
+  68 63 65 64 65 69 69
+                       69 87 104)
+
+#_(104 87 69
+       69 69 65 64 65 63 68
+       69 69 65 64 65 63 68
+       69 69 65 64 65 63 68
+       69 69 65 64 65 63 68
+       69 69 65 64 65 63 68
+       69 69 65 64 65 63 68)
 
 
 #_(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day14/input.txt")
