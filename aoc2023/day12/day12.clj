@@ -28,10 +28,10 @@
        (keep-indexed (fn [n c]
                        (when (= damaged c)
                          n)))
-       (reduce (fn [acc n]
+       (reduce (fn [^BigInteger acc n]
                  (.setBit acc n)) BigInteger/ZERO)))
 
-(defn to-row [n]
+(defn to-row [^BigInteger n]
   (loop [n n
          s ""]
     (if (zero? n)
@@ -46,82 +46,13 @@
     [springs
      (map parse-long counts)]))
 
-(defn check-arrangement [row counts]
-  (->> row
-       (re-seq #"#+")
-       (map count)
-       (= counts)))
-
-(defn row-permutations [row-binary permutations unknowns]
-  (map to-row
-       (for [p permutations]
-         (loop [pn p
-                u' unknowns
-                n' row-binary]
-           (if (zero? pn)
-             n'
-             (recur (bit-shift-right (bit-clear pn 0) 1)
-                    (rest u')
-                    (if (bit-test pn 0)
-                      (bit-set n' (first u'))
-                      (bit-clear n' (first u')))))))))
-
-(defn count-arrangements [row]
-  (let [[line counts] (parse-row row)
-        unknowns (find-unknowns line)
-        permutations
-        (-> (java.lang.Math/pow 2 (count unknowns))
-            range)]
-    (reduce (fn [acc n]
-              (if (check-arrangement n counts)
-                (inc acc)
-                acc))
-            0
-            (row-permutations (to-binary line)
-                              permutations
-                              unknowns))))
-
-(defn count-total-arrangements [input]
-  (->> input
-       str/split-lines
-       (map count-arrangements)
-       (reduce +)))
-
-(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")
-     count-total-arrangements)
-
-;; 7173
-
-;; part deux
-
-(defn expand-row [row]
-  (let [[springs counts] (str/split row #"\s+")]
-    (str (str/join \? (repeat 5 springs))
-         " "
-         (str/join \, (repeat 5 counts)))))
-
-
-
-(parse-row (first (str/split-lines sample-2)))
-
 (defn to-mask [row]
   (->> row
+       reverse
        (keep-indexed (fn [n c]
                        (when (#{damaged unknown} c) n)))
-       (reduce (fn [acc n]
+       (reduce (fn [^BigInteger acc n]
                  (.setBit acc n)) BigInteger/ZERO)))
-
-(count (find-unknowns "??.??.???###????#??????.??.???###????#??????.??.???###????#??????.??.???###????#??????.??.???###????#???"))
-
-;; 74, amount of permutations 2^74, that's not going to fly
-
-(defn find-max-bit [^BigInteger n]
-  (loop [c 0
-         n n]
-    (if (zero? n)
-      c
-      (recur (inc c) (.shiftRight n 1)))))
-
 
 (defn find-possible-placements
   "Narrow search for placements by disallowing some impossibilities"
@@ -169,14 +100,19 @@
                                   0))))))))))
 
 
-(set! *warn-on-reflection* true)
-
-(let [row "???.###"
-      cs '(1 1 3)]
-  (->> (find-possible-placements (vec row) 0 1)))
-; (0 1 2)
-
-(defrecord QueueTask [c pos groups])
+(defn row-permutations [row-binary permutations unknowns]
+  (map to-row
+       (for [p permutations]
+         (loop [pn p
+                u' unknowns
+                n' row-binary]
+           (if (zero? pn)
+             n'
+             (recur (bit-shift-right (bit-clear pn 0) 1)
+                    (rest u')
+                    (if (bit-test pn 0)
+                      (bit-set n' (first u'))
+                      (bit-clear n' (first u')))))))))
 
 (def spring-masks (into {}
                         (map (fn [[i v]]
@@ -202,56 +138,90 @@
                          19 2r11111111111111111110
                          20 2r111111111111111111110}))
 
-(defn count-arrangements2 [row cs]
+(defrecord QueueTask [c pos groups])
+
+(defn count-arrangements [row cs]
   (let [svec (vec row)
         rowcount (count row)
-        mask (to-mask row)]
+        ^BigInteger mask (to-mask row)]
     (loop [arrs 0
            queue (list (->QueueTask BigInteger/ZERO 0 cs))]
       (if (empty? queue) arrs
           (let [head (first queue)
-                c (:c head)
+                ^BigInteger c (:c head)
                 pos (:pos head)
                 groups (:groups head)
                 group (first groups)
-                spring-mask (spring-masks group)
+                ^BigInteger spring-mask (spring-masks group)
                 placements (find-possible-placements svec pos group)]
-            (println pos (to-row c))
+            #_(println (to-row c) placements)
             (recur (+ arrs (if (and (empty? groups)
-                                    (every? #{unknown operational} (subvec svec pos))) 1 0))
+                                    (or (>= pos rowcount)
+                                        (every? #{unknown operational} (subvec svec pos)))) 1 0))
                    (into (rest queue)
                          (comp
                           (keep (fn [pp]
                                   (let [cand (.or c (.shiftLeft spring-mask (- rowcount pp (inc group))))]
+                                    #_(println (to-row cand))
                                     (when (.equals cand (.and mask cand))
                                       (->QueueTask cand
-                                                   (+ pos pp group 1) ;; <- this goes funky in second round
+                                                   (+ pp group 1)
                                                    (rest groups)))))))
                          placements)))))))
 
-(count-arrangements2 "?###????????" (list 3,2,1))
+(defn count-total-arrangements [input]
+  (->> input
+       str/split-lines
+       (map parse-row)
+       (map (fn [[a b]]
+              (count-arrangements a b)))
+       (reduce +)))
 
-(to-mask "?###????????")
+(count-total-arrangements sample-2)
 
-(to-row (to-binary "?###????????"))
+(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
+     count-total-arrangements)
 
-(count "###...")
-(to-row (.shiftLeft (spring-masks 3) (- 6 3 1 3)))
+;; 7173 -- is the correct answer
+
+;; part deux
+
+(defn expand-row [row]
+  (let [[springs counts] (str/split row #"\s+")]
+    (str (str/join \? (repeat 5 springs))
+         " "
+         (str/join \, (repeat 5 counts)))))
 
 
-(count-arrangements2 "?###?????????###????????" (list 3,2,1 3,2,1))
 
-(count-arrangements2 "?#?#?#?#?#?#?#?" (list 1 3,1,6))
+(parse-row (first (str/split-lines sample-2)))
 
-(let [[a b] (parse-row (expand-row "?###???????? 3,2,1"))]
-  (count-arrangements2 a b))
 
-506250
 
-(expand-row "??.??.???###????#??? 1,2,8,1,1")
+(count (find-unknowns "??.??.???###????#??????.??.???###????#??????.??.???###????#??????.??.???###????#??????.??.???###????#???"))
 
-(to-mask "??.??.???###????#??????.??.???###????#??????.??.???###????#??????.??.???###????#??????.??.???###????#???")
-"1,2,8,1,1,1,2,8,1,1,1,2,8,1,1,1,2,8,1,1,1,2,8,1,1"
+;; 74, amount of permutations 2^74, that's not going to fly
+
+(defn find-max-bit [^BigInteger n]
+  (loop [c 0
+         n n]
+    (if (zero? n)
+      c
+      (recur (inc c) (.shiftRight n 1)))))
+
+
+
+
+
+(set! *warn-on-reflection* true)
+
+(let [row "???.###"
+      cs '(1 1 3)]
+  (->> (find-possible-placements (vec row) 0 1)))
+; (0 1 2)
+
+
+
 
 
 (->> sample-2
@@ -261,10 +231,16 @@
      (map (fn [[r c]] (count-arrangements2 r c))))
 
 
+(->> (expand-row ".???.??.?? 1,1,1")
+     parse-row
+     (apply count-arrangements2))
+
 (def *arrs
   (doall
-   (->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")
+   (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
         str/split-lines
         (map expand-row)
         (map parse-row)
-        (map (fn [[r c]] (count-arrangements2 r c))))))
+        (map-indexed (fn [i [r c]]
+               (println i)
+               (count-arrangements2 r c))))))
