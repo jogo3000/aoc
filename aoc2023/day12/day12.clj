@@ -145,19 +145,22 @@
         rowcount (count row)
         ^BigInteger mask (to-mask row)]
     (loop [arrs 0
+           all-arrs '()
            queue (list (->QueueTask BigInteger/ZERO 0 cs))]
-      (if (empty? queue) arrs
+      (if (empty? queue) all-arrs
           (let [head (first queue)
                 ^BigInteger c (:c head)
                 pos (:pos head)
                 groups (:groups head)
                 group (first groups)
                 ^BigInteger spring-mask (spring-masks group)
-                placements (find-possible-placements svec pos group)]
+                placements (find-possible-placements svec pos group)
+                complete? (and (empty? groups)
+                               (or (>= pos rowcount)
+                                   (every? #{unknown operational} (subvec svec pos))))]
             #_(println (to-row c) placements)
-            (recur (+ arrs (if (and (empty? groups)
-                                    (or (>= pos rowcount)
-                                        (every? #{unknown operational} (subvec svec pos)))) 1 0))
+            (recur (+ arrs (if complete? 1 0))
+                   (if complete? (cons c all-arrs) all-arrs)
                    (into (rest queue)
                          (comp
                           (keep (fn [pp]
@@ -171,16 +174,20 @@
 
 (defn count-total-arrangements [input]
   (->> input
+       str/trim
        str/split-lines
        (map parse-row)
        (map (fn [[a b]]
               (count-arrangements a b)))
-       (reduce +)))
+       (reduce (fn [acc arrs]
+                 (+ acc (count (set arrs)))) 0)))
 
 (count-total-arrangements sample-2)
 
 (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
      count-total-arrangements)
+
+;; 7747 giving too high answer, but why?
 
 ;; 7173 -- is the correct answer
 
