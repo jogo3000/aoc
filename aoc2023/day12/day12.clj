@@ -189,7 +189,7 @@
 
 (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
            str/split-lines
-           ((fn [s] (subvec s 240 241)))
+           ((fn [s] (subvec s 40 41)))
            (map parse-row)
            (map (fn [[a b]]
                   (println a b)
@@ -204,6 +204,10 @@
        (map-indexed (fn [i [a b]]
                       [i (count-arrangements a b)]))))
 
+(->> "??.??.?????###? 1,2,6"
+     parse-row
+     (apply count-arrangements))
+
 (->> "?#???#?#?????? 1,3,3"
      parse-row
      (apply count-arrangements))
@@ -212,9 +216,14 @@
 
 ; (1046056 1044586 1044585 261226 261225 130666 130665)
 
-(->> "?#???#?#?????? 1,3,3"
-     day12-old/count-arrangements)4
+(println "??.??.?????###? 1,2,6")
+(->> "??.??.?????###? 1,2,6"
+     day12-old/count-arrangements)
 ; 5
+
+(println "?????#???#?.??#?#??? 8,2,1,1")
+(->> "?????#???#?.??#?#??? 8,2,1,1"
+     day12-old/count-arrangements)
 
 (clojure.set/difference
  (set (map #(update % 1 count) *arrs-1))

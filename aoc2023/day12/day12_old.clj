@@ -73,7 +73,8 @@
             range)]
     (reduce (fn [acc n]
               (if (check-arrangement n counts)
-                (inc acc)
+                (do (println n)
+                  (inc acc))
                 acc))
             0
             (row-permutations (to-binary line)
