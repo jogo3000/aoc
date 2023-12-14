@@ -24,21 +24,22 @@
 
 (defn to-binary [row]
   (->> row
+       reverse
        (keep-indexed (fn [n c]
                        (when (= damaged c)
                          n)))
        (reduce (fn [acc n]
-                 (bit-set acc n)) 0)))
+                 (.setBit acc n)) BigInteger/ZERO)))
 
 (defn to-row [n]
   (loop [n n
          s ""]
     (if (zero? n)
       s
-      (recur (bit-shift-right (bit-clear n 0) 1)
-             (str s (if (bit-test n 0)
+      (recur (.shiftRight (.clearBit n 0) 1)
+             (str (if (.testBit n 0)
                       damaged
-                      operational))))))
+                      operational) s)))))
 
 (defn parse-row [row]
   (let [[springs & counts] (str/split row #"[\s,]+")]
@@ -110,9 +111,9 @@
        (reduce (fn [acc n]
                  (.setBit acc n)) BigInteger/ZERO)))
 
-(to-mask "??..")
+(count (find-unknowns "??.??.???###????#??????.??.???###????#??????.??.???###????#??????.??.???###????#??????.??.???###????#???"))
 
-(to-mask "??.??.???###????#??????.??.???###????#??????.??.???###????#??????.??.???###????#??????.??.???###????#???")
+;; 74, amount of permutations 2^74, that's not going to fly
 
 (defn find-max-bit [^BigInteger n]
   (loop [c 0
@@ -122,10 +123,12 @@
       (recur (inc c) (.shiftRight n 1)))))
 
 
-(defn find-possible-placements [row group]
+(defn find-possible-placements
+  "Narrow search for placements by disallowing some impossibilities"
+  [row start group]
   (let [rowcount (count row)]
     (->> rowcount
-         range
+         (range start)
          (keep (fn [start]
                  (if-not (or (zero? start) (let [^char c (get row (dec start))]
                                              (or (= \? c)
@@ -153,7 +156,7 @@
                        nil)))))
          ;; Remove placements where known broken ones are left over
          (remove (fn [pos]
-                   (let [s (subvec row 0 pos)]
+                   (let [s (subvec row start pos)]
                      (loop [p 0
                             bs 0]
                        (cond
@@ -161,40 +164,80 @@
                          (= p pos) false
                          :else
                          (recur (inc p)
-                                (if (= \# (get row p))
+                                (if (= \# (get s p))
                                   (inc bs)
                                   0))))))))))
+
 
 (set! *warn-on-reflection* true)
 
 (let [row "???.###"
       cs '(1 1 3)]
-  (->> (find-possible-placements (vec row) 1)))
+  (->> (find-possible-placements (vec row) 0 1)))
 ; (0 1 2)
 
+(defrecord QueueTask [c pos groups])
+
+(def spring-masks (into {}
+                        (map (fn [[i v]]
+                               [i (BigInteger/valueOf v)]))
+                        {1 2r10
+                         2 2r110
+                         3 2r1110
+                         4 2r11110
+                         5 2r111110
+                         6 2r1111110
+                         7 2r11111110
+                         8 2r111111110
+                         9 2r1111111110
+                         10 2r11111111110
+                         11 2r111111111110
+                         12 2r1111111111110
+                         13 2r11111111111110
+                         14 2r111111111111110
+                         15 2r1111111111111110
+                         16 2r11111111111111110
+                         17 2r111111111111111110
+                         18 2r1111111111111111110
+                         19 2r11111111111111111110
+                         20 2r111111111111111111110}))
+
 (defn count-arrangements2 [row cs]
-  (let [svec (vec row)]
+  (let [svec (vec row)
+        rowcount (count row)
+        mask (to-mask row)]
     (loop [arrs 0
-           queue (list (list svec cs))]
+           queue (list (->QueueTask BigInteger/ZERO 0 cs))]
       (if (empty? queue) arrs
           (let [head (first queue)
-                row (first head)
-                rowcount (count row)
-                groups (second head)
-                c (first groups)
-                placements (find-possible-placements row c)]
+                c (:c head)
+                pos (:pos head)
+                groups (:groups head)
+                group (first groups)
+                spring-mask (spring-masks group)
+                placements (find-possible-placements svec pos group)]
+            (println pos (to-row c))
             (recur (+ arrs (if (and (empty? groups)
-                                    (every? #{unknown operational} row)) 1 0))
+                                    (every? #{unknown operational} (subvec svec pos))) 1 0))
                    (into (rest queue)
                          (comp
-                          (map #(list (subvec row (min rowcount
-                                                       (+ (inc %) c)))
-                                      (rest (second head))))
-                          (filter #(not (and (empty? (first %))
-                                             (seq (second %))))))
+                          (keep (fn [pp]
+                                  (let [cand (.or c (.shiftLeft spring-mask (- rowcount pp (inc group))))]
+                                    (when (.equals cand (.and mask cand))
+                                      (->QueueTask cand
+                                                   (+ pos pp group 1) ;; <- this goes funky in second round
+                                                   (rest groups)))))))
                          placements)))))))
 
 (count-arrangements2 "?###????????" (list 3,2,1))
+
+(to-mask "?###????????")
+
+(to-row (to-binary "?###????????"))
+
+(count "###...")
+(to-row (.shiftLeft (spring-masks 3) (- 6 3 1 3)))
+
 
 (count-arrangements2 "?###?????????###????????" (list 3,2,1 3,2,1))
 
