@@ -187,6 +187,16 @@
 (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
      count-total-arrangements)
 
+(let [[a b]
+      (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
+           str/split-lines
+           (second)
+           (parse-row)
+           )]
+  (println a b)
+  (doseq [a (count-arrangements a b)]
+    (println (to-row a))))
+
 ;; 7747 giving too high answer, but why?
 
 ;; 7173 -- is the correct answer
