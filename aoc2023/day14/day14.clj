@@ -90,7 +90,7 @@ O.#..O.#.#
 
 (evaluate-load (roll-until-stop (parse-input sample1) north))
 
-(-> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day14/input.txt")
+(-> (slurp "/home/uusitalo/git/aoc/aoc2023/day14/input.txt")
     str/trim
     parse-input
     (roll-until-stop north)
@@ -120,9 +120,9 @@ O.#..O.#.#
      (take 50)
      (map evaluate-load))
 
-(def found-loads
+(defn find-loads [input]
   (loop [loads '()
-         m (parse-input sample1)]
+         m (parse-input input)]
     (let [m' (run-cycle m)
           cycle-lengths
           (seq
@@ -131,62 +131,25 @@ O.#..O.#.#
                  :when (and (>= (count parts) 2)
                             (= 1 (count (set parts))))]
              p))]
-      (if (or (= (- 1000 4) (count loads))
+      (if (or ;; (= (- 1000 4) (count loads))
               ;; Tähän oikea loppuehto
               cycle-lengths)
         [cycle-lengths loads]
         (recur (cons (evaluate-load m) loads) m')))))
 
-(let [[ls sequence] found-loads
-      cycle-len (first ls)
-      len (count sequence)
-      cycles (quot len cycle-len)
-      noncyclical (mod len cycle-len)]
-  {:cycle-len cycle-len
-   :len len
-   :cycles cycles
-   :noncyclical noncyclical
-   :result (rem (- 21 noncyclical) cycles)})
-
-{:cycle-len 7, :len 17, :cycles 2, :noncyclical 3, :result 1}
+(defn find-from-cycle [[[cycle-len & _] sequence] rounds]
+  (let [len (count sequence)
+        noncyclical (mod len cycle-len)
+        zycle (take cycle-len sequence)]
+    (nth zycle
+         (mod (- cycle-len
+                 (- (mod rounds cycle-len) noncyclical))
+              cycle-len))))
 
 
+(find-from-cycle (find-loads sample1) (inc 1000000000))
 
-;[7 17 3 3 1]
+(find-from-cycle (find-loads (slurp "/home/uusitalo/git/aoc/aoc2023/day14/input.txt"))
+                  (inc 1000000000))
 
-; x x x [ ... ] y
-
-(clojure.pprint/pprint (partition 7 (second found-loads)))
-
-(count (second found-loads))
-
-'(65 69 69
-  68 63 65 64 65 69 69
-  68 63 65 64 65 69 69
-                       69 87 104)
-
-#_(104 87 69
-       69 69 65 64 65 63 68
-       69 69 65 64 65 63 68
-       69 69 65 64 65 63 68
-       69 69 65 64 65 63 68
-       69 69 65 64 65 63 68
-       69 69 65 64 65 63 68)
-
-
-#_(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day14/input.txt")
-     parse-input
-     (iterate run-cycle)
-     (take 50)
-     (map evaluate-load))
-
-'(101316
-  100329
-  100364
-  100494
-  100619
-  100689
-  100790
-  100915
-  100981
-  101085 101150 101218 101304 101387 101446 101511 101617 101692 101779 101847 101917 101955 102041 102074 102127 102179 102228 102280 102376 102457 102552 102646 102751 102841 102951 103036 103151 103255 103392 103498 103606 103702 103819 103922 104046 104142 104233 104311 104416 104503)
+;; 104671
