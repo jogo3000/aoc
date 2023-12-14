@@ -189,12 +189,40 @@
 
 (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
            str/split-lines
+           ((fn [s] (subvec s 240 241)))
            (map parse-row)
            (map (fn [[a b]]
                   (println a b)
                   (doseq [ar (count-arrangements a b)]
                     (let [s (to-row ar)]
                       (println (str (str/join (take (- (count a) (count s)) (repeat \.))) s)))))))
+
+(def *arrs-1
+  (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
+       str/split-lines
+       (map parse-row)
+       (map-indexed (fn [i [a b]]
+                      [i (count-arrangements a b)]))))
+
+(->> "?#???#?#?????? 1,3,3"
+     parse-row
+     (apply count-arrangements))
+
+; (6000 5916 5902 5895 4572 4558 4551 4215)
+
+; (1046056 1044586 1044585 261226 261225 130666 130665)
+
+(->> "?#???#?#?????? 1,3,3"
+     day12-old/count-arrangements)4
+; 5
+
+(clojure.set/difference
+ (set (map #(update % 1 count) *arrs-1))
+ (set *arrs-old))
+
+(def *arrs-old
+  (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
+       day12-old/total-arrangements-per-line))
 
 ;; 7747 giving too high answer, but why?
 
