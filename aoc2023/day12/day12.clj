@@ -143,7 +143,7 @@
 
 (defrecord QueueTask [c pos groups])
 
-(defn count-arrangements [row cs]
+(defn count-arrangements [[row cs]]
   (let [svec (vec row)
         rowcount (count row)
         ^BigInteger mask (to-mask row)]
@@ -176,8 +176,7 @@
        str/trim
        str/split-lines
        (map parse-row)
-       (map (fn [[a b]]
-              (count-arrangements a b)))
+       (map count-arrangements)
        (reduce (fn [acc arrs]
                  (+ acc arrs)) 0)))
 
