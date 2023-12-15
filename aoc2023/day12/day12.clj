@@ -239,14 +239,19 @@
       c
       (recur (inc c) (.shiftRight n 1)))))
 
+(->> sample1
+     str/split-lines
+     (map expand-row)
+     (map parse-row)
+     (map count-arrangements))
 
 
 #_(def *arrs
-  (doall
-   (->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")
-        str/split-lines
-        (map expand-row)
-        (map parse-row)
-        (map-indexed (fn [i [r c]]
-               (println i)
-               (count-arrangements r c))))))
+    (doall
+     (->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")
+          str/split-lines
+          (map expand-row)
+          (map parse-row)
+          (map-indexed (fn [i [r c]]
+                         (println i)
+                         (count-arrangements r c))))))
