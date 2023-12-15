@@ -71,6 +71,8 @@
 (defn focusing-power [input]
   (->> (install-lenses input)
        (mapcat (fn [[i box]]
+                 (let [labels (map first box)]
+                   (assert (= (count labels) (count (set labels)))))
                  (map-indexed (fn [j [_ focal-length]]
                                 (* (inc i) ;; one plus box number
                                    (inc j) ;; slot number of the lens
