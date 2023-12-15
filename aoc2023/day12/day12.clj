@@ -151,12 +151,15 @@
 
 (defrecord QueueTask [c pos groups])
 
+;; This could be reimplemented as a recursive search so we can avoid doing the same work again
 (defn count-arrangements [[row cs]]
   (let [svec (vec row)
         rowcount (count row)
         ^BigInteger mask (to-mask row)
-        ^BigInteger dm-mask (to-dm-mask row)]
+        ^BigInteger dm-mask (to-dm-mask row)
+        cache {}]
     (loop [arrs 0
+           cache cache
            queue (list (->QueueTask BigInteger/ZERO 0 cs))]
       (if (empty? queue) arrs
           (let [head (first queue)
@@ -168,8 +171,13 @@
                 complete? (and (empty? groups)
                                (.equals dm-mask (.and dm-mask c))
                                (or (>= pos rowcount)
-                                   (every? #{unknown operational} (subvec svec pos))))]
+                                   (every? #{unknown operational} (subvec svec pos))))
+                placements (if complete? []
+                               (if-let [cached (cache [pos group])]
+                                 cached
+                                 (find-possible-placements svec pos group)))]
             (recur (+ arrs (if complete? 1 0))
+                   (assoc cache [pos group] placements)
                    (into (rest queue)
                          (comp
                           (keep (fn [pp]
@@ -179,7 +187,7 @@
                                       (->QueueTask cand
                                                    (+ pp group 1)
                                                    (rest groups)))))))
-                         (find-possible-placements svec pos group))))))))
+                         placements)))))))
 
 (defn count-total-arrangements [input]
   (->> input
