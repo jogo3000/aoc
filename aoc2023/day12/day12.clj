@@ -156,11 +156,9 @@
                 groups (:groups head)
                 group (first groups)
                 ^BigInteger spring-mask (spring-masks group)
-                placements (find-possible-placements svec pos group)
                 complete? (and (empty? groups)
                                (or (>= pos rowcount)
                                    (every? #{unknown operational} (subvec svec pos))))]
-            #_(println (to-row c) placements)
             (recur (+ arrs (if complete? 1 0))
                    (into (rest queue)
                          (comp
@@ -171,7 +169,7 @@
                                       (->QueueTask cand
                                                    (+ pp group 1)
                                                    (rest groups)))))))
-                         placements)))))))
+                         (find-possible-placements svec pos group))))))))
 
 (defn count-total-arrangements [input]
   (->> input
