@@ -171,7 +171,8 @@
                 complete? (and (empty? groups)
                                (.equals dm-mask (.and dm-mask c))
                                (or (>= pos rowcount)
-                                   (every? #{unknown operational} (subvec svec pos))))
+                                   (every? #(or (= \? %)
+                                                (= \. %)) (subvec svec pos))))
                 placements (if complete? []
                                (if-let [cached (cache [pos group])]
                                  cached
@@ -254,12 +255,12 @@
      (map count-arrangements))
 
 
-#_(def *arrs
+(def *arrs
     (doall
-     (->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")
+     (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
           str/split-lines
           (map expand-row)
           (map parse-row)
-          (map-indexed (fn [i [r c]]
+          (map-indexed (fn [i arrs]
                          (println i)
-                         (count-arrangements r c))))))
+                         (count-arrangements arrs))))))
