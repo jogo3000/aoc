@@ -49,13 +49,13 @@
 
           (= (first (get box pos))
              (first label))
-          (let [[head tail] (split-at (inc pos) box)]
-            (into (vec (rest head)) tail))
+          (let [[head tail] (split-at pos box)]
+            (into (vec head) (rest tail)))
 
           :else (recur (inc pos)))))
 
 (defn install-lenses [instructions]
-  (->> (str/split instructions #",")
+  (->> (str/split (str/trim instructions) #",")
        (map str/trim)
        (map parse-label)
        (reduce (fn [acc [instr label]]
@@ -81,4 +81,5 @@
 
 (focusing-power sample)
 (focusing-power (slurp "/home/uusitalo/git/aoc/aoc2023/day15/input.txt"))
-;; 231852
+
+;; 244403
