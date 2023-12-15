@@ -61,7 +61,7 @@
   (->> row
        reverse
        (keep-indexed (fn [n c]
-                       (when (= unknown c) n)))
+                       (when (= damaged c) n)))
        (reduce (fn [^BigInteger acc n]
                  (.setBit acc n)) BigInteger/ZERO)))
 
@@ -154,7 +154,8 @@
 (defn count-arrangements [[row cs]]
   (let [svec (vec row)
         rowcount (count row)
-        ^BigInteger mask (to-mask row)]
+        ^BigInteger mask (to-mask row)
+        ^BigInteger dm-mask (to-dm-mask row)]
     (loop [arrs 0
            queue (list (->QueueTask BigInteger/ZERO 0 cs))]
       (if (empty? queue) arrs
@@ -165,6 +166,7 @@
                 group (first groups)
                 ^BigInteger spring-mask (spring-masks group)
                 complete? (and (empty? groups)
+                               (.equals dm-mask (.and dm-mask c))
                                (or (>= pos rowcount)
                                    (every? #{unknown operational} (subvec svec pos))))]
             (recur (+ arrs (if complete? 1 0))
@@ -188,9 +190,11 @@
        (reduce (fn [acc arrs]
                  (+ acc arrs)) 0)))
 
-#_(count-total-arrangements sample-2)
+#; (count-arrangements (parse-row ".??..??...?##. 1,1,3")) ; should be 4
 
-(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")
+; (count-total-arrangements sample-2) ; Should be 21
+
+(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
      count-total-arrangements)
 
 
