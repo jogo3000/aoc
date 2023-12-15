@@ -204,7 +204,9 @@
         ^BigInteger mask (to-mask row)
         ^BigInteger dm-mask (to-dm-mask row)
         row (vec row)]
-    (letfn [(count-arrangements* [mem-count start ^BigInteger c cs]
+    (letfn [(count-arrangements* [mem-count start ^BigInteger c cs
+                                  ;; needs to take mask and dm-mask as input! So we can memoize it.
+                                  ]
               (if (and (empty? cs)
                        (.equals dm-mask (.and dm-mask c))
                        (or (>= start (count row))
@@ -221,7 +223,7 @@
                                     (when (.equals cand (.and mask cand))
                                       (mem-count mem-count
                                                  (+ p group 1)
-                                                 cand
+                                                 cand ;; this has to be zero so it can work!
                                                  (rest cs)))))
                                 placements)))))]
       (let [mem-count (memoize count-arrangements*)]
