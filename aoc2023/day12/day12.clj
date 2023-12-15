@@ -57,6 +57,14 @@
        (reduce (fn [^BigInteger acc n]
                  (.setBit acc n)) BigInteger/ZERO)))
 
+(defn to-dm-mask [row]
+  (->> row
+       reverse
+       (keep-indexed (fn [n c]
+                       (when (= unknown c) n)))
+       (reduce (fn [^BigInteger acc n]
+                 (.setBit acc n)) BigInteger/ZERO)))
+
 (defn find-possible-placements
   "Narrow search for placements by disallowing some impossibilities"
   [row start group]
