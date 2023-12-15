@@ -239,7 +239,7 @@
       c
       (recur (inc c) (.shiftRight n 1)))))
 
-(->> sample1
+(->> sample-2
      str/split-lines
      (map expand-row)
      (map parse-row)
