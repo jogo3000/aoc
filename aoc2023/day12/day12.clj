@@ -199,9 +199,38 @@
        (reduce (fn [acc arrs]
                  (+ acc arrs)) 0)))
 
-#; (count-arrangements (parse-row ".??..??...?##. 1,1,3")) ; should be 4
+(defn count-arrangements2 [[row cs]]
+  (let [rowcount (count row)
+        ^BigInteger mask (to-mask row)
+        ^BigInteger dm-mask (to-dm-mask row)
+        row (vec row)]
+    (letfn [(count-arrangements* [mem-count start ^BigInteger c cs]
+              (if (and (empty? cs)
+                       (.equals dm-mask (.and dm-mask c))
+                       (or (>= start (count row))
+                           (every? (fn [ch] (or (= \? ch)
+                                                (= \. ch))) (subvec row start))))
+                1
+                (let [group (first cs)
+                      placements (find-possible-placements row start group)
+                      spring-mask (spring-masks group)]
+                  (reduce +
+                          (keep (fn [p]
+                                  (let [cand (.or c (.shiftLeft spring-mask (- rowcount p (inc group))))]
+                                    #_(println (to-row cand))
+                                    (when (.equals cand (.and mask cand))
+                                      (mem-count mem-count
+                                                 (+ p group 1)
+                                                 cand
+                                                 (rest cs)))))
+                                placements)))))]
+      (let [mem-count (memoize count-arrangements*)]
+        (mem-count mem-count 0 BigInteger/ZERO cs)))))
 
-; (count-total-arrangements sample-2) ; Should be 21
+(count-arrangements2 (parse-row ".??..??...?##. 1,1,3"))
+# ; (count-arrangements (parse-row ".??..??...?##. 1,1,3")) ; should be 4
+
+                                        ; (count-total-arrangements sample-2) ; Should be 21
 
 (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
      count-total-arrangements)
@@ -252,7 +281,7 @@
      str/split-lines
      (map expand-row)
      (map parse-row)
-     (map count-arrangements))
+     (map count-arrangements2))
 
 
 (def *arrs
@@ -263,4 +292,4 @@
           (map parse-row)
           (map-indexed (fn [i arrs]
                          (println i)
-                         (count-arrangements arrs))))))
+                         (count-arrangements2 arrs))))))
