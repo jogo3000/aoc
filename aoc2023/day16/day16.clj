@@ -70,37 +70,38 @@
                    (or (some neg? pos')
                        (>= (first pos') height)
                        (>= (second pos') width)))))))
-(defrecord Beam [head visited])
 
-(defn energize-tiles [m]
-  (loop [n 0
-         done-beams #{}
-         beams [(->Beam [right [0 0]] #{})]
-         energized {[0 0] #{right}}]
-    (if (empty? beams) energized
-        (let [beams' (mapcat (fn [beam] (let [new-beam-heads (shoot-beams m (:head beam))]
-                                          (map
-                                           (fn [beam-head]
-                                             (->Beam beam-head (conj (:visited beam)
-                                                                     (:head beam))))
-                                           new-beam-heads))) beams)
-              done-beams' (set (filter (fn [beam] ((:visited beam) (:head beam))) beams'))
-              energized' (merge-with
-                          into
-                          energized
-                          (into {}
-                                (map (fn [beam]
-                                       (let [[dir pos] (:head beam)]
-                                         [pos #{dir}])))
-                                beams'))]
-          (recur (inc n)
-                 (into done-beams done-beams')
-                 (remove done-beams' beams')
-                 energized')))))
+(defn traverse-until-stop-or-mirror [m beam]
+  (loop [beam beam
+         path [beam]]
+    (let [b' (shoot-beams m beam)]
+      (if (and (= \. (get-in m (second beam)))
+               (= 1 (count b')))
+        (recur (first b')
+               (conj path (first b')))
+        [path b']))))
+
+(def traverse (memoize traverse-until-stop-or-mirror))
+
+(defn energize-tiles [m taken-paths beam]
+  (let [[this-path new-beams] (traverse m beam)
+        taken' (conj taken-paths (first this-path))]
+
+    (reduce (fn [{:keys [path taken] :as all} beam]
+              (let [recur-result (energize-tiles m taken beam)]
+                {:path (into path
+                             (:path recur-result))
+                 :taken (into taken (:taken recur-result))}))
+            {:path this-path
+             :taken taken'}
+            (remove taken-paths new-beams))))
+
+(energize-tiles (parse-input sample) #{} [right [0 0]])
 
 (defn count-energized-tiles [input]
+  (println "----- new round ------")
   (let [m (parse-input input)]
-    (count (energize-tiles m))))
+    (count (set (map second (:path (energize-tiles m #{} [right [0 0]])))))))
 
 (count-energized-tiles sample)
 
