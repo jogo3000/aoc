@@ -208,10 +208,7 @@
 (count-total-arrangements sample-2) ; Should be 21
 
 (count-total-arrangements (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt"))
-
-
-;; 7747 giving too high answer, but why?
-
+;; 7208 -- too high answer
 ;; 7173 -- is the correct answer
 
 ;; part deux
