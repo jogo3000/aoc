@@ -2,6 +2,8 @@
   (:require [clojure.string :as str]
             [clojure.set :as set]))
 
+(set! *warn-on-reflection* true)
+
 (def sample (str/trim (slurp "/home/jogo3000/git/aoc2022/aoc2023/day16/sample.txt")))
 (def puzzle-input (str/trim (slurp "/home/jogo3000/git/aoc2022/aoc2023/day16/input.txt")))
 
@@ -68,32 +70,33 @@
                    (or (some neg? pos')
                        (>= (first pos') height)
                        (>= (second pos') width)))))))
-
-(def loops (atom 0))
-(def gathered (atom nil))
-
-(def max-loops 793)
+(defrecord Beam [head visited])
 
 (defn energize-tiles [m]
-  (reset! loops 0)
   (loop [n 0
-         beams [[right [0 0]]]
+         done-beams #{}
+         beams [(->Beam [right [0 0]] #{})]
          energized {[0 0] #{right}}]
-    (swap! loops inc)
-    (reset! gathered energized)
-    (if (or (> n max-loops)
-            (= (count energized) 7199)
-            (empty? beams)) energized
-        (let [beams' (mapcat (partial shoot-beams m) beams)
-              energized' (merge-with into energized (into {}
-                                                          (map (fn [[dir pos]]
-                                                                 [pos #{dir}]))
-                                                          beams'))]
-          (if (or (> n max-loops)
-                  (= energized' energized)) energized'
-              (recur (inc n)
-                     beams'
-                     energized'))))))
+    (if (empty? beams) energized
+        (let [beams' (mapcat (fn [beam] (let [new-beam-heads (shoot-beams m (:head beam))]
+                                          (map
+                                           (fn [beam-head]
+                                             (->Beam beam-head (conj (:visited beam)
+                                                                     (:head beam))))
+                                           new-beam-heads))) beams)
+              done-beams' (set (filter (fn [beam] ((:visited beam) (:head beam))) beams'))
+              energized' (merge-with
+                          into
+                          energized
+                          (into {}
+                                (map (fn [beam]
+                                       (let [[dir pos] (:head beam)]
+                                         [pos #{dir}])))
+                                beams'))]
+          (recur (inc n)
+                 (into done-beams done-beams')
+                 (remove done-beams' beams')
+                 energized')))))
 
 (defn count-energized-tiles [input]
   (let [m (parse-input input)]
@@ -116,29 +119,5 @@
                 \#
                 tile)))))))))
 
-
-(let [m (parse-input puzzle-input)
-      e (energize-tiles m)]
-  (println "-----")
-  (println (visualize m e)))
-
-(let [m (parse-input puzzle-input)]
-  (println "-----")
-  (println
-   (visualize m missing)))
-
-(let [m (parse-input puzzle-input)]
-  (println "-----")
-  (println
-   (visualize m endstate)))
-
-(let [m (parse-input puzzle-input)]
-  (println "----")
-  (println
-   (visualize m (into {}
-                      (set/difference (set endstate)
-                                      (set missing))))))
-
-
 (count-energized-tiles puzzle-input)
-;; but why? 7199
+;; 7199
