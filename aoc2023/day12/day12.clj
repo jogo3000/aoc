@@ -75,16 +75,18 @@
 
 (.toString (to-dm-mask "????.######..#####.") 2) ; "11111100111110"
 
-(defn to-op-mask [row]
-  (->> row
-       reverse
-       (keep-indexed (fn [n c]
-                       (when (= operational c) n)))
-       (reduce (fn [^BigInteger acc n]
-                 (.setBit acc n)) BigInteger/ZERO)))
+(defn to-op-mask ^BigInteger [row]
+  (let [mask (.subtract (.shiftLeft BigInteger/ONE (count row)) BigInteger/ONE)]
+    (->> row
+         reverse
+         (keep-indexed (fn [n c]
+                         (when (= operational c) n)))
+         (reduce (fn [^BigInteger acc n]
+                   (.clearBit acc n)) mask))))
 
+(.toString (to-mask "?.##..??#") 2)    "101100111"
 (.toString (to-dm-mask "?.##..??#") 2) "1100001"
-(.toString (to-op-mask "?.##...?#") 2) "10011000"
+(.toString (to-op-mask "?.##...?#") 2) "101100011"
 
 (defn find-possible-placements
   "Narrow search for placements by disallowing some impossibilities"
@@ -177,21 +179,27 @@
                 1
                 (let [group (first cs)
                       placements (find-possible-placements row start group)
-                      spring-mask (spring-masks group)]
+                      ^BigInteger spring-mask (spring-masks group)]
                   (reduce +
                           (keep (fn [p]
                                   (let [cand (.shiftLeft spring-mask (- p start))]
-                                    (println "----- " p)
-                                    (println (.toString cand 2))
-                                    (println (.toString (.shiftRight mask start) 2))
-                                    (println (.toString (to-cand-mask dm-mask group start) 2))
+                                    ;; (println "----- " start p group)
+                                    ;; (println "cand" (.toString cand 2))
+                                    ;; (println "mask" (.toString (.shiftRight mask start) 2))
+                                    ;; (println "dmma" (.toString dm-mask 2))
+                                    ;; (println "opma" (.toString op-mask 2))
+                                    ;; (println "dm-m" (.toString (to-cand-mask dm-mask group start) 2))
                                     (when (and
                                            ;; Candidate has no damaged springs in place of operational from mask
                                            (.equals cand (.and (.shiftRight mask start) cand))
                                            ;; Candidate has no operational springs in place of damaged from dm-mask
                                            ;; Call to cand-mask is probably wrong
-                                           (let [cand-dm-mask (to-cand-mask dm-mask group start)]
-                                             (.equals cand-dm-mask (.and cand-dm-mask cand))))
+                                           (let [^BigInteger cand-dm-mask (to-cand-mask dm-mask group start)]
+                                             (.equals cand-dm-mask (.and cand-dm-mask cand)))
+
+                                           (let [^BigInteger cand-op-mask (.shiftRight op-mask start)]
+                                             (println "cand-op-mask" (.toString cand-op-mask 2))
+                                             (.equals cand (.and cand cand-op-mask))))
                                       (mem-count mem-count
                                                  (+ p group 1) ; start
                                                  (rest cs)))))
@@ -241,10 +249,10 @@
      str/split-lines
      (map expand-row)
      (map parse-row)
-     (map count-arrangements2))
+     (map count-arrangements))
 
 
-(def *arrs
+#_(def *arrs
     (doall
      (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
           str/split-lines
