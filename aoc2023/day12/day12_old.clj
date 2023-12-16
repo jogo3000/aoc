@@ -93,7 +93,7 @@
        (map-indexed (fn [i line]
                       [i (count-arrangements line)]))))
 
-(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
+#_(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
      count-total-arrangements)
 
 ; 7173

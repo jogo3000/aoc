@@ -120,19 +120,19 @@
                        :else
                        nil)))))
          ;; Remove placements where known broken ones are left over
+         ;; Eiks tässä voi vaan poistaa kaikki joissa on vikoja vasemmalla puolen
          (remove (fn [pos]
                    (let [s (subvec row start pos)]
                      (loop [p 0
                             bs 0]
                        (cond
-                         (= bs group) true
+                         (> bs 0) true
                          (= p pos) false
                          :else
                          (recur (inc p)
                                 (if (= \# (get s p))
                                   (inc bs)
                                   0))))))))))
-
 
 (def spring-masks (into {}
                         (map (fn [[i v]]
@@ -167,7 +167,7 @@
   (let [^BigInteger mask (to-mask row)
         ^BigInteger dm-mask (to-dm-mask row)
         ^BigInteger op-mask (to-op-mask row)
-        row (vec (->> row reverse)) ;; Drop leading operational, they make no difference in the calculation
+        row (vec (->> row reverse))
         ;; Need to reverse the groups because be bit representation is mirrored
         cs (reverse cs)
         rowcount (count row)]
@@ -183,12 +183,6 @@
                   (reduce +
                           (keep (fn [p]
                                   (let [cand (.shiftLeft spring-mask (- p start))]
-                                    ;; (println "----- " start p group)
-                                    ;; (println "cand" (.toString cand 2))
-                                    ;; (println "mask" (.toString (.shiftRight mask start) 2))
-                                    ;; (println "dmma" (.toString dm-mask 2))
-                                    ;; (println "opma" (.toString op-mask 2))
-                                    ;; (println "dm-m" (.toString (to-cand-mask dm-mask group start) 2))
                                     (when (and
                                            ;; Candidate has no damaged springs in place of operational from mask
                                            (.equals cand (.and (.shiftRight mask start) cand))
@@ -198,14 +192,26 @@
                                              (.equals cand-dm-mask (.and cand-dm-mask cand)))
 
                                            (let [^BigInteger cand-op-mask (.shiftRight op-mask start)]
-                                             (println "cand-op-mask" (.toString cand-op-mask 2))
                                              (.equals cand (.and cand cand-op-mask))))
+                                      ;; (println "proceeding with")
+                                      ;; (println "----- " start p group)
+                                      ;; (println (str/join row))
+                                      ;; (println "cand>" (.toString cand 2))
+                                      ;; (println "wmas>" (.toString mask 2))
+                                      ;; (println "mask>" (.toString (.shiftRight mask start) 2))
+                                      ;; (println "dmma" (.toString dm-mask 2))
+                                      ;; (println "opma" (.toString op-mask 2))
+                                      ;; (println "dm-m>" (.toString (to-cand-mask dm-mask group start) 2))
+
                                       (mem-count mem-count
                                                  (+ p group 1) ; start
                                                  (rest cs)))))
                                 placements)))))]
       (let [mem-count (memoize count-arrangements*)]
         (mem-count mem-count 0 #_BigInteger/ZERO cs)))))
+
+(count-arrangements (parse-row ".??#??#??#??.#?.? 7,2")) ; 2 < this is wrong?
+
 
 (count-arrangements (parse-row ".??..??...?##. 1,1,3"))
 (.toString (to-dm-mask ".??..??...?##.") 2) ; "10011001110001"
@@ -223,8 +229,28 @@
 (count-total-arrangements sample-2) ; Should be 21
 
 (count-total-arrangements (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt"))
+
+(defn count-total-arrangements-per-line [input]
+  (->> input
+       str/split-lines
+       (map parse-row)
+       (map-indexed (fn [i row]
+                      [i (count-arrangements row)]))
+       (into {})))
+
+
+(def ln->arrs (day12-old/total-arrangements-per-line (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")))
 ;; 7208 -- too high answer
 ;; 7173 -- is the correct answer
+
+(def newarrs (count-total-arrangements-per-line (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")))
+
+(for [n (range 1000)
+      :when (not= (ln->arrs n) (newarrs n))]
+  n)
+
+(day12-old/count-arrangements ".??#??#??#??.#?.? 7,2") ; 1
+(count-arrangements (parse-row ".??#??#??#??.#?.? 7,2")); 2 < this is wrong?
 
 ;; part deux
 
@@ -252,12 +278,19 @@
      (map count-arrangements))
 
 
-#_(def *arrs
+(def *arrs
     (doall
-     (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
+     (->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")
           str/split-lines
           (map expand-row)
           (map parse-row)
           (map-indexed (fn [i arrs]
                          (println i)
-                         (count-arrangements2 arrs))))))
+                         (count-arrangements arrs))))))
+
+(reduce + *arrs)
+
+29826669191291
+
+;; This is wrong, but the algorithm is fast enough
+;; 32085654969588
