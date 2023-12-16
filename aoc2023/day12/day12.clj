@@ -164,13 +164,14 @@
 (defn count-arrangements [[row cs]]
   (let [^BigInteger mask (to-mask row)
         ^BigInteger dm-mask (to-dm-mask row)
+        ^BigInteger op-mask (to-op-mask row)
         row (vec (->> row reverse)) ;; Drop leading operational, they make no difference in the calculation
         ;; Need to reverse the groups because be bit representation is mirrored
         cs (reverse cs)
         rowcount (count row)]
     (letfn [(count-arrangements* [mem-count start #_#_^BigInteger mask ^BigInteger dm-mask cs]
               (if (and (empty? cs)
-                       (or (>= start (count row))
+                       (or (>= start rowcount)
                            (every? (fn [ch] (or (= \? ch)
                                                 (= \. ch))) (subvec row start))))
                 1
@@ -180,10 +181,15 @@
                   (reduce +
                           (keep (fn [p]
                                   (let [cand (.shiftLeft spring-mask (- p start))]
+                                    (println "----- " p)
+                                    (println (.toString cand 2))
+                                    (println (.toString (.shiftRight mask start) 2))
+                                    (println (.toString (to-cand-mask dm-mask group start) 2))
                                     (when (and
                                            ;; Candidate has no damaged springs in place of operational from mask
                                            (.equals cand (.and (.shiftRight mask start) cand))
                                            ;; Candidate has no operational springs in place of damaged from dm-mask
+                                           ;; Call to cand-mask is probably wrong
                                            (let [cand-dm-mask (to-cand-mask dm-mask group start)]
                                              (.equals cand-dm-mask (.and cand-dm-mask cand))))
                                       (mem-count mem-count
@@ -194,7 +200,8 @@
         (mem-count mem-count 0 #_BigInteger/ZERO cs)))))
 
 (count-arrangements (parse-row ".??..??...?##. 1,1,3"))
-# ; (count-arrangements (parse-row ".??..??...?##. 1,1,3")) ; should be 4
+(.toString (to-dm-mask ".??..??...?##.") 2) ; "10011001110001"
+#_(count-arrangements (parse-row ".??..??...?##. 1,1,3")) ; should be 4
 
 (count-arrangements (parse-row "????.#...#... 4,1,1")) ;; Should be 1
 
