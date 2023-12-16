@@ -122,3 +122,38 @@
 
 (count-energized-tiles puzzle-input)
 ;; 7199
+
+;; part deux
+
+(defn find-edges [m]
+  (let [height (count m)
+        width (count m)]
+    (-> []
+        (into
+         (for [y (range height)]
+           [right [y 0]]))
+        (into
+         (for [y (range height)]
+           [left [y (dec width)]]))
+        (into
+         (for [x (range width)]
+           [down [0 x]]))
+        (into
+         (for [x (range width)]
+           [up [(dec height) x]])))))
+
+(let [m (parse-input sample)
+      edges (set (find-edges m))]
+  (println   (visualize m edges))) ;; looks good
+
+(defn find-best-starting-point [input]
+  (let [m (parse-input input)
+        edges (find-edges m)]
+    (reduce (fn [acc beam]
+              (max acc (count (set (map second (:path (energize-tiles m #{} beam)))))))
+            0 edges)))
+
+(find-best-starting-point sample) ; 51 - correct
+
+(find-best-starting-point puzzle-input)
+;; 7438 oh man this feels great!
