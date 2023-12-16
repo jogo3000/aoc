@@ -25,14 +25,17 @@
 (defn find-unknowns [row]
   (keep-indexed #(when (= unknown %2) %1) row))
 
-(defn to-binary [row]
+(defn to-binary
+  "Note that the binary pattern will look like it is reversed!"
+  [row]
   (->> row
-       reverse
        (keep-indexed (fn [n c]
                        (when (= damaged c)
                          n)))
        (reduce (fn [^BigInteger acc n]
                  (.setBit acc n)) BigInteger/ZERO)))
+
+(.toString (to-binary "?.##..###.") 2) ;; "111110011111100000"
 
 (defn to-row [^BigInteger n]
   (loop [n n
@@ -40,22 +43,27 @@
     (if (zero? n)
       s
       (recur (.shiftRight (.clearBit n 0) 1)
-             (str (if (.testBit n 0)
-                      damaged
-                      operational) s)))))
+             (str s (if (.testBit n 0)
+                    damaged
+                    operational))))))
 
 (defn parse-row [row]
   (let [[springs & counts] (str/split row #"[\s,]+")]
     [springs
      (map parse-long counts)]))
 
-(defn to-mask [row]
+(defn to-mask
+  "Binary pattern will look reversed!"
+  [row]
   (->> row
        reverse
        (keep-indexed (fn [n c]
                        (when (#{damaged unknown} c) n)))
        (reduce (fn [^BigInteger acc n]
                  (.setBit acc n)) BigInteger/ZERO)))
+
+(.toString (to-mask "?.??.???") 2) ; "11101101"
+
 
 (defn to-dm-mask [row]
   (->> row
@@ -64,6 +72,19 @@
                        (when (= damaged c) n)))
        (reduce (fn [^BigInteger acc n]
                  (.setBit acc n)) BigInteger/ZERO)))
+
+(.toString (to-dm-mask "????.######..#####.") 2) ; "11111100111110"
+
+(defn to-op-mask [row]
+  (->> row
+       reverse
+       (keep-indexed (fn [n c]
+                       (when (= operational c) n)))
+       (reduce (fn [^BigInteger acc n]
+                 (.setBit acc n)) BigInteger/ZERO)))
+
+(.toString (to-dm-mask "?.##..??#") 2) "1100001"
+(.toString (to-op-mask "?.##...?#") 2) "10011000"
 
 (defn find-possible-placements
   "Narrow search for placements by disallowing some impossibilities"
@@ -111,104 +132,44 @@
                                   0))))))))))
 
 
-(defn row-permutations [row-binary permutations unknowns]
-  (map to-row
-       (for [p permutations]
-         (loop [pn p
-                u' unknowns
-                n' row-binary]
-           (if (zero? pn)
-             n'
-             (recur (bit-shift-right (bit-clear pn 0) 1)
-                    (rest u')
-                    (if (bit-test pn 0)
-                      (bit-set n' (first u'))
-                      (bit-clear n' (first u')))))))))
-
 (def spring-masks (into {}
                         (map (fn [[i v]]
                                [i (BigInteger/valueOf v)]))
-                        {1 2r10
-                         2 2r110
-                         3 2r1110
-                         4 2r11110
-                         5 2r111110
-                         6 2r1111110
-                         7 2r11111110
-                         8 2r111111110
-                         9 2r1111111110
-                         10 2r11111111110
-                         11 2r111111111110
-                         12 2r1111111111110
-                         13 2r11111111111110
-                         14 2r111111111111110
-                         15 2r1111111111111110
-                         16 2r11111111111111110
-                         17 2r111111111111111110
-                         18 2r1111111111111111110
-                         19 2r11111111111111111110
-                         20 2r111111111111111111110}))
+                        {1 2r1
+                         2 2r11
+                         3 2r111
+                         4 2r1111
+                         5 2r11111
+                         6 2r111111
+                         7 2r1111111
+                         8 2r11111111
+                         9 2r111111111
+                         10 2r1111111111
+                         11 2r11111111111
+                         12 2r111111111111
+                         13 2r1111111111111
+                         14 2r11111111111111
+                         15 2r111111111111111
+                         16 2r1111111111111111
+                         17 2r11111111111111111
+                         18 2r111111111111111111
+                         19 2r1111111111111111111
+                         20 2r11111111111111111111}))
 
-(defrecord QueueTask [c pos groups])
+(defn to-cand-mask [mask group offset]
+  (.and (.shiftRight mask offset)
+        (-> (.pow (BigInteger/valueOf 2) (inc group))
+            (.subtract BigInteger/ONE))))
 
-;; This could be reimplemented as a recursive search so we can avoid doing the same work again
 (defn count-arrangements [[row cs]]
-  (let [svec (vec row)
-        rowcount (count row)
-        ^BigInteger mask (to-mask row)
+  (let [^BigInteger mask (to-mask row)
         ^BigInteger dm-mask (to-dm-mask row)
-        cache {}]
-    (loop [arrs 0
-           cache cache
-           queue (list (->QueueTask BigInteger/ZERO 0 cs))]
-      (if (empty? queue) arrs
-          (let [head (first queue)
-                ^BigInteger c (:c head)
-                pos (:pos head)
-                groups (:groups head)
-                group (first groups)
-                ^BigInteger spring-mask (spring-masks group)
-                complete? (and (empty? groups)
-                               (.equals dm-mask (.and dm-mask c))
-                               (or (>= pos rowcount)
-                                   (every? #(or (= \? %)
-                                                (= \. %)) (subvec svec pos))))
-                placements (if complete? []
-                               (if-let [cached (cache [pos group])]
-                                 cached
-                                 (find-possible-placements svec pos group)))]
-            (recur (+ arrs (if complete? 1 0))
-                   (assoc cache [pos group] placements)
-                   (into (rest queue)
-                         (comp
-                          (keep (fn [pp]
-                                  (let [cand (.or c (.shiftLeft spring-mask (- rowcount pp (inc group))))]
-                                    #_(println (to-row cand))
-                                    (when (.equals cand (.and mask cand))
-                                      (->QueueTask cand
-                                                   (+ pp group 1)
-                                                   (rest groups)))))))
-                         placements)))))))
-
-(defn count-total-arrangements [input]
-  (->> input
-       str/trim
-       str/split-lines
-       (map parse-row)
-       (map count-arrangements)
-       (reduce (fn [acc arrs]
-                 (+ acc arrs)) 0)))
-
-(defn count-arrangements2 [[row cs]]
-  (let [rowcount (count row)
-        ^BigInteger mask (to-mask row)
-        ^BigInteger dm-mask (to-dm-mask row)
-        row (vec row)]
-    (letfn [(count-arrangements* [mem-count start ^BigInteger c cs
-                                  ;; needs to take mask and dm-mask as input! So we can memoize it.
-                                  ]
+        row (vec (->> row reverse)) ;; Drop leading operational, they make no difference in the calculation
+        ;; Need to reverse the groups because be bit representation is mirrored
+        cs (reverse cs)
+        rowcount (count row)]
+    (letfn [(count-arrangements* [mem-count start #_#_^BigInteger mask ^BigInteger dm-mask cs]
               (if (and (empty? cs)
-                       (.equals dm-mask (.and dm-mask c))
                        (or (>= start (count row))
                            (every? (fn [ch] (or (= \? ch)
                                                 (= \. ch))) (subvec row start))))
@@ -218,42 +179,35 @@
                       spring-mask (spring-masks group)]
                   (reduce +
                           (keep (fn [p]
-                                  (let [cand (.or c (.shiftLeft spring-mask (- rowcount p (inc group))))]
-                                    #_(println (to-row cand))
-                                    (when (.equals cand (.and mask cand))
+                                  (let [cand (.shiftLeft spring-mask (- p start))]
+                                    (when (and
+                                           ;; Candidate has no damaged springs in place of operational from mask
+                                           (.equals cand (.and (.shiftRight mask start) cand))
+                                           ;; Candidate has no operational springs in place of damaged from dm-mask
+                                           (let [cand-dm-mask (to-cand-mask dm-mask group start)]
+                                             (.equals cand-dm-mask (.and cand-dm-mask cand))))
                                       (mem-count mem-count
-                                                 (+ p group 1)
-                                                 cand ;; this has to be zero so it can work!
+                                                 (+ p group 1) ; start
                                                  (rest cs)))))
                                 placements)))))]
       (let [mem-count (memoize count-arrangements*)]
-        (mem-count mem-count 0 BigInteger/ZERO cs)))))
+        (mem-count mem-count 0 #_BigInteger/ZERO cs)))))
 
-(count-arrangements2 (parse-row ".??..??...?##. 1,1,3"))
+(count-arrangements (parse-row ".??..??...?##. 1,1,3"))
 # ; (count-arrangements (parse-row ".??..??...?##. 1,1,3")) ; should be 4
 
-                                        ; (count-total-arrangements sample-2) ; Should be 21
+(count-arrangements (parse-row "????.#...#... 4,1,1")) ;; Should be 1
 
-(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
-     count-total-arrangements)
-
-
-#_(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
-           str/split-lines
-           ((fn [s] (subvec s 40 41)))
-           (map parse-row)
-           (map (fn [[a b]]
-                  (println a b)
-                  (doseq [ar (count-arrangements a b)]
-                    (let [s (to-row ar)]
-                      (println (str (str/join (take (- (count a) (count s)) (repeat \.))) s)))))))
-
-#_(def *arrs-1
-  (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day12/input.txt")
+(defn count-total-arrangements [input]
+  (->> input
        str/split-lines
        (map parse-row)
-       (map-indexed (fn [i [a b]]
-                      [i (count-arrangements a b)]))))
+       (map count-arrangements)
+       (reduce +)))
+
+(count-total-arrangements sample-2) ; Should be 21
+
+(count-total-arrangements (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt"))
 
 
 ;; 7747 giving too high answer, but why?
