@@ -112,7 +112,7 @@ LJ.LJ")
 
 (find-furthest sample-4)
 
-(find-furthest (slurp "/home/jogo3000/git/aoc2022/aoc2023/day10/input.txt"))
+(find-furthest (slurp "day10/input.txt"))
 ;;6927
 
 ;; Part deux
@@ -302,7 +302,7 @@ L7JLJL-JLJLJL--JLJ.L")
 
 (count (find-interior-cells sample-8))
 
-(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day10/input.txt")
+(->> (slurp "day10/input.txt")
      find-interior-cells
      count)
 

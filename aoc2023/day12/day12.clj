@@ -228,7 +228,7 @@
 
 (count-total-arrangements sample-2) ; Should be 21
 
-(count-total-arrangements (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt"))
+(count-total-arrangements (slurp "day12/input.txt"))
 
 (defn count-total-arrangements-per-line [input]
   (->> input
@@ -239,11 +239,11 @@
        (into {})))
 
 
-(def ln->arrs (day12-old/total-arrangements-per-line (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")))
+(def ln->arrs (day12-old/total-arrangements-per-line (slurp "day12/input.txt")))
 ;; 7208 -- too high answer
 ;; 7173 -- is the correct answer
 
-(def newarrs (count-total-arrangements-per-line (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")))
+(def newarrs (count-total-arrangements-per-line (slurp "day12/input.txt")))
 
 (for [n (range 1000)
       :when (not= (ln->arrs n) (newarrs n))]
@@ -280,7 +280,7 @@
 
 (def *arrs
     (doall
-     (->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day12/input.txt")
+     (->> (slurp "day12/input.txt")
           str/split-lines
           (map expand-row)
           (map parse-row)

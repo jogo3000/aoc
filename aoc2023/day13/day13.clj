@@ -57,7 +57,7 @@
 (defn parse-puzzle-input [input]
   (str/split input #"\n{2}"))
 
-(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day13/input.txt")
+(->> (slurp "day13/input.txt")
      str/trim
      parse-puzzle-input
      (map parse-input)
@@ -103,7 +103,7 @@
 
 (println (rearrange-mirror sample1))
 
-(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day13/input.txt")
+(->> (slurp "day13/input.txt")
      str/trim
      parse-puzzle-input
      (map rearrange-mirror)

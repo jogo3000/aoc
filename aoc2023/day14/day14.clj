@@ -90,7 +90,7 @@ O.#..O.#.#
 
 (evaluate-load (roll-until-stop (parse-input sample1) north))
 
-(-> (slurp "/home/uusitalo/git/aoc/aoc2023/day14/input.txt")
+(-> (slurp "day14/input.txt")
     str/trim
     parse-input
     (roll-until-stop north)
@@ -149,7 +149,7 @@ O.#..O.#.#
 
 (find-from-cycle (find-loads sample1) (inc 1000000000))
 
-(find-from-cycle (find-loads (slurp "/home/uusitalo/git/aoc/aoc2023/day14/input.txt"))
+(find-from-cycle (find-loads (slurp "day14/input.txt"))
                   (inc 1000000000))
 
 ;; 104671

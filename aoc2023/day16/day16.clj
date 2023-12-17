@@ -4,8 +4,8 @@
 
 (set! *warn-on-reflection* true)
 
-(def sample (str/trim (slurp "/home/jogo3000/git/aoc2022/aoc2023/day16/sample.txt")))
-(def puzzle-input (str/trim (slurp "/home/jogo3000/git/aoc2022/aoc2023/day16/input.txt")))
+(def sample (str/trim (slurp "day16/sample.txt")))
+(def puzzle-input (str/trim (slurp "day16/input.txt")))
 
 (defn parse-input [s]
   (->> s

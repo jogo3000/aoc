@@ -105,7 +105,7 @@
      parse-input
      find-shortest-paths) ; 374, correct
 
-(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day11/input.txt")
+(->> (slurp "day11/input.txt")
      parse-input
      find-shortest-paths) ; 9947476
 
@@ -113,7 +113,7 @@
 ;; Part deux
 ;; 1 000 000
 
-(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day11/input.txt")
+(->> (slurp "day11/input.txt")
      parse-input
      (find-voids)) ;; Lot of void, need to be smarter
 
@@ -144,6 +144,6 @@
                                       (* 999999 (count x-voids))))))
                          other-galaxies))))))
 
-(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day11/input.txt")
+(->> (slurp "day11/input.txt")
      parse-input
      find-shortest-paths-smart) ; 519939907614

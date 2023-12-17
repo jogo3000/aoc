@@ -17,7 +17,7 @@
      (map HASH)
      (reduce +))
 
-(->> (str/split (slurp "/home/uusitalo/git/aoc/aoc2023/day15/input.txt") #",")
+(->> (str/split (slurp "day15/input.txt") #",")
      (map str/trim)
      (map HASH)
      (reduce +))
@@ -80,6 +80,6 @@
        (reduce +)))
 
 (focusing-power sample)
-(focusing-power (slurp "/home/uusitalo/git/aoc/aoc2023/day15/input.txt"))
+(focusing-power (slurp "day15/input.txt"))
 
 ;; 244403

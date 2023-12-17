@@ -42,7 +42,7 @@ BBB = (AAA, ZZZ)
 ZZZ = (ZZZ, ZZZ)
 ")
 
-(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day8/input.txt")
+(->> (slurp "day8/input.txt")
      find-exit) ;; 22199
 
 
@@ -100,7 +100,7 @@ XXX = (XXX, XXX)
 (find-ghost-exit sample-input-3)
 
 (find-ghost-exit
- (slurp "/home/uusitalo/git/aoc/aoc2023/day8/input.txt"))
+ (slurp "day8/input.txt"))
 
 ;; Cycle lengths
 ;; (18827M 16579M 13207M 17141M 14893M 22199M) This will take time

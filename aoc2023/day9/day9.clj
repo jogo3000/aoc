@@ -33,7 +33,7 @@
      (reduce +))
 
 
-(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day9/input.txt")
+(->> (slurp "day9/input.txt")
      str/trim
      str/split-lines
      (map predict)
@@ -53,7 +53,7 @@
      (map extrapolate)
      (reduce +))
 
-(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day9/input.txt")
+(->> (slurp "day9/input.txt")
      str/trim
      str/split-lines
      (map extrapolate)
