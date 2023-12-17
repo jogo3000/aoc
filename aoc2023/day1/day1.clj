@@ -7,10 +7,8 @@
        ((fn [ds]
           (parse-long (str (first ds) (last ds)))))))
 
-
-
 (->>
- (slurp "/home/uusitalo/git/aoc/aoc2023/day1/input.txt")
+ (slurp "day1/input.txt")
  (str/split-lines)
  (map process-line)
  (reduce +))
@@ -69,7 +67,7 @@ zoneight234
 (process-line2 "twonetwone")
 
 (->>
- (slurp "/home/uusitalo/git/aoc/aoc2023/day1/input.txt")
+ (slurp "day1/input.txt")
  (str/split-lines)
  (map process-line2)
  (reduce +))
