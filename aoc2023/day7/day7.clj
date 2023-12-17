@@ -67,7 +67,7 @@ QQQJA 483")
 
 (count-winnings sample-input)
 
-(let [hand-bids (->> (str/trim (slurp "/home/uusitalo/git/aoc/aoc2023/day7/input.txt"))
+(let [hand-bids (->> (str/trim (slurp "day7/input.txt"))
                      str/split-lines (map #(str/split % #"\s+")))
       sorted (reverse (sort-by first compare-hands hand-bids))]
   (->>
@@ -76,7 +76,7 @@ QQQJA 483")
           [(sort-by #(.indexOf card-strengths %) hand) bid]))))
 
 
-(count-winnings (str/trim (slurp "/home/uusitalo/git/aoc/aoc2023/day7/input.txt")))
+(count-winnings (str/trim (slurp "day7/input.txt")))
 
 ;; 251121738
 
@@ -138,6 +138,6 @@ QQQJA 483")
 
 (count-winnings2 sample-input)
 
-(count-winnings2 (str/trim (slurp "/home/uusitalo/git/aoc/aoc2023/day7/input.txt")))
+(count-winnings2 (str/trim (slurp "day7/input.txt")))
 
 ;; 251421071

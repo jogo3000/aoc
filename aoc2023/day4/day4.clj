@@ -28,7 +28,7 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
 (count-points sample-input) ; 13.0
 
 
-(count-points (slurp "/home/uusitalo/git/aoc/aoc2023/day4/input 2.txt")) ; 21158.0
+(count-points (slurp "day4/input 2.txt")) ; 21158.0
 
 ;; part 2
 
@@ -69,7 +69,7 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
         (for [card sample-card-values]
           (count-cards sample-card-values card)))
 
-(let [card-values (count-card-values (slurp "/home/uusitalo/git/aoc/aoc2023/day4/input 2.txt"))]
+(let [card-values (count-card-values (slurp "day4/input 2.txt"))]
   (reduce +
         (for [card card-values]
           (count-cards card-values card))))

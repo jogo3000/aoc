@@ -71,7 +71,7 @@
 
 ;; 4361 , correct
 
-(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day3/input")
+(->> (slurp "day3/input")
      find-parts
      #_(into #{})
      (reduce +))
@@ -118,6 +118,6 @@
 (->> (find-gears sample-input)
      (reduce +))
 
-(->> (slurp "/home/jogo3000/git/aoc2022/aoc2023/day3/input")
+(->> (slurp "day3/input")
      (find-gears)
      (reduce +))

@@ -92,7 +92,7 @@ humidity-to-location map:
      parse-input
      find-lowest) ;; 35, correct
 
-(->> (slurp "/home/uusitalo/git/aoc/aoc2023/day5/input.txt")
+(->> (slurp "day5/input.txt")
      (parse-input)
      (find-lowest))
 
@@ -113,7 +113,7 @@ humidity-to-location map:
             nil seeds)))
 
 (def puzzle-seeds
-  (-> (slurp "/home/uusitalo/git/aoc/aoc2023/day5/input.txt")
+  (-> (slurp "day5/input.txt")
       (parse-input)
       :seeds))
 
@@ -136,6 +136,6 @@ humidity-to-location map:
 
 (find-lowest2 sample-maps) ;; 46, correct
 
-(println (->> (slurp "/home/uusitalo/git/aoc/aoc2023/day5/input.txt")
+(println (->> (slurp "day5/input.txt")
               (parse-input)
               (find-lowest2)))
