@@ -35,7 +35,12 @@
            north [north east west]
            south [south east west]})
 
-(def visited (atom #{}))
+(defn safe+ [& args]
+  (reduce (fn [acc n]
+            (if (or (= Long/MAX_VALUE acc)
+                    (= Long/MAX_VALUE n))
+              (reduced Long/MAX_VALUE)
+              (+ acc n))) args))
 
 (defn search-path [m]
   (let [height (count m)
@@ -48,44 +53,60 @@
       (loop [open-set (list [start 0 nil])
              came-from {}
              g-score {start 0}
-             f-score {start (h start)}]
+             f-score {start (h start)}
+             v-score {start [nil 0]}]
         (let [[current speed dir :as all-current]
               (if (empty? open-set) nil
                   (reduce (fn find-current [acc n]
                             (min-key
                              (fn keyfn [n] (f-score (first n) Long/MAX_VALUE)) acc n))
                           open-set))]
-          (swap! visited conj all-current)
           (if (or (empty? open-set)
                   (= current goal))
             [current came-from g-score f-score]
             (let [possible-dirs (if (nil? dir) [east south]
                                     (filter (fn allowed-move? [dir']
-                                              (and
-                                               (may-move? m current dir')
-                                               (not (and (>= (or speed 0) 3) (= dir dir')))))
+                                              (may-move? m current dir'))
                                             (dirs dir)))
                   new-state
-                  (reduce (fn [{:keys [f-score g-score open-set came-from] :as all} d]
+                  (reduce (fn [{:keys [f-score
+                                       g-score
+                                       v-score
+                                       open-set
+                                       came-from] :as all} d]
                             (let [neighbor (d current)
-                                  new-speed (inc (if (= dir d) (or speed 0) 0))
-                                  tentative-score (+ (g-score current Long/MAX_VALUE)
-                                                     (get-in m neighbor))]
-                              (if (< (g-score neighbor Long/MAX_VALUE) tentative-score)
+                                  new-speed (inc (if (= dir d) (or speed 1) 0))
+                                  tentative-score (safe+ (if (< 3 new-speed)
+                                                           Long/MAX_VALUE
+                                                           0)
+                                                         (g-score current Long/MAX_VALUE)
+                                                         (get-in m neighbor)
+                                                         (let [[dn vn] (v-score neighbor)]
+                                                           (if (not= dn d)
+                                                             ;; Changing
+                                                             ;; direction
+                                                             ;; Doesn't seem to
+                                                             ;; to to the other
+                                                             ;; way
+                                                             0
+                                                             (if (< 3 (+ vn new-speed))
+                                                               Long/MAX_VALUE
+                                                               0))))]
+                              (if (<= (g-score neighbor Long/MAX_VALUE) tentative-score)
                                 all
                                 {:came-from (assoc came-from neighbor current)
                                  :g-score (assoc g-score neighbor tentative-score)
                                  :f-score (assoc f-score neighbor (+ tentative-score (h neighbor)))
-                                 :open-set (if (not-any? #(= % [neighbor new-speed d]) open-set)
-                                             (cons [neighbor
-                                                    new-speed
-                                                    d]
+                                 :v-score (assoc v-score neighbor [d new-speed])
+                                 :open-set (if (not-any? #(= % neighbor new-speed d) open-set)
+                                             (cons [neighbor new-speed d]
                                                    open-set)
                                              open-set)})))
                           {:open-set (remove #(= all-current %) open-set)
                            :f-score f-score
                            :g-score g-score
-                           :came-from came-from}
+                           :came-from came-from
+                           :v-score v-score}
                           possible-dirs)]
               (recur
                ;; open-set
@@ -95,7 +116,8 @@
                ;; g-score
                (:g-score new-state)
                ;; f-score
-               (:f-score new-state)))))))))
+               (:f-score new-state)
+               (:v-score new-state)))))))))
 
 (defn reconstruct-path [came-from current]
   (loop [total-path (list current)
@@ -108,6 +130,8 @@
 (def result (search-path (parse-input sample-input)))
 ((nth result 2) (first result))
 (reconstruct-path (second result) (first result))
+
+(search-path  (parse-input puzzle-input))
 
 (let [m (parse-input sample-input)]
   (reduce (fn [acc pos]
