@@ -42,6 +42,9 @@
               (reduced Long/MAX_VALUE)
               (+ acc n))) args))
 
+(defn ** [n]
+  (* n n))
+
 (defn search-path [m]
   (let [height (count m)
         width (count (first m))
@@ -77,6 +80,10 @@
                             (let [neighbor (d current)
                                   new-speed (inc (if (= dir d) (or speed 1) 0))
                                   tentative-score (safe+ (if (< 3 new-speed)
+                                                           Long/MAX_VALUE
+                                                           0)
+                                                         (if (and (<= 3 speed)
+                                                                  (= dir d))
                                                            Long/MAX_VALUE
                                                            0)
                                                          (g-score current Long/MAX_VALUE)
@@ -131,7 +138,7 @@
 ((nth result 2) (first result))
 (reconstruct-path (second result) (first result))
 
-(search-path  (parse-input puzzle-input))
+#_(search-path  (parse-input puzzle-input))
 
 (let [m (parse-input sample-input)]
   (reduce (fn [acc pos]
