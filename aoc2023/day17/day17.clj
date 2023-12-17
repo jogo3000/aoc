@@ -35,18 +35,18 @@
            north [north east west]
            south [south east west]})
 
-(defn search-path [m start]
+(defn search-path [m]
   (let [height (count m)
         width (count (first m))
+        start [0 0]
         goal [(dec height) (dec width)]]
     (letfn [(h [pos]
               (+ (- (first goal) (first pos))
                  (- (second goal) (second pos))))]
       (loop [open-set (list start)
-             came-from {}               ; Only direction needed I think
+             came-from {}
              g-score {start 0}
              f-score {start (h start)}]
-        (println (count open-set))
         (let [current (if (empty? open-set) nil
                           (reduce (fn find-current [acc n]
                                     (min-key
@@ -55,12 +55,12 @@
           (if (or (empty? open-set)
                   (= current goal))
             [current came-from g-score f-score]
-            (let [[speed dir] (came-from current)
-                  possible-dirs (if (nil? dir) [south east]
+            (let [[_ speed dir] (came-from current)
+                  possible-dirs (if (nil? dir) [east south]
                                     (filter (fn allowed-move? [dir']
                                               (and
                                                (may-move? m current dir')
-                                               (not (and (>= (or speed 1) 3) (= dir dir')))))
+                                               (not (and (>= (or speed 0) 3) (= dir dir')))))
                                             (dirs dir)))
                   neighbor->tentative-score
                   (for [d possible-dirs
@@ -80,7 +80,9 @@
 
                ;; came-from
                (into came-from
-                     (map (fn [[n _ d]] [n [(inc (or speed 1)) d]]))
+                     (map (fn [[n _ d]] [n [current
+                                            (inc (if (= dir d) (or speed 0) 0))
+                                            d]]))
                      neighbor->tentative-score)
 
                ;; g-score
@@ -94,5 +96,43 @@
                             [neighbor (+ tentative-score (h neighbor))]))
                      neighbor->tentative-score)))))))))
 
+(defn reconstruct-path [came-from current]
+  (loop [total-path (list current)
+         current current]
+    (if-let [c' (first (came-from current))]
+      (recur (cons c' total-path)
+             c')
+      total-path)))
 
-(search-path (parse-input sample-input) [0 0])
+(def result (search-path (parse-input sample-input)))
+
+(reconstruct-path (second result) (first result))
+
+(let [m (parse-input sample-input)]
+  (reduce (fn [acc pos]
+            (+ acc (get-in m pos)))
+          0
+          (reconstruct-path (second result) (first result))))
+
+(defn visualize [m steps dirs]
+  (let [height (count m)
+        width (count (first m))]
+    (str/join
+     \newline
+     (for [y (range height)]
+       (str/join
+        (for [x (range width)]
+          (if (contains? steps [y x])
+            (let [d (last (dirs [y x]))]
+              (cond
+                (= west d) \<
+                (= east d) \>
+                (= north d) \^
+                (= south d) \v
+                :else \#))
+            \.)))))))
+
+(let [m (parse-input sample-input)
+      p (set (reconstruct-path (second result) (first result)))]
+  (println "---------")
+  (println (visualize m p (second result))))
