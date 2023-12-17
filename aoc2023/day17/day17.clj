@@ -35,6 +35,8 @@
            north [north east west]
            south [south east west]})
 
+(def visited (atom #{}))
+
 (defn search-path [m]
   (let [height (count m)
         width (count (first m))
@@ -43,20 +45,21 @@
     (letfn [(h [pos]
               (+ (- (first goal) (first pos))
                  (- (second goal) (second pos))))]
-      (loop [open-set (list start)
+      (loop [open-set (list [start 0 nil])
              came-from {}
              g-score {start 0}
              f-score {start (h start)}]
-        (let [current (if (empty? open-set) nil
-                          (reduce (fn find-current [acc n]
-                                    (min-key
-                                     (fn keyfn [n] (f-score n Long/MAX_VALUE)) acc n))
-                                  open-set))]
+        (let [[current speed dir :as all-current]
+              (if (empty? open-set) nil
+                  (reduce (fn find-current [acc n]
+                            (min-key
+                             (fn keyfn [n] (f-score (first n) Long/MAX_VALUE)) acc n))
+                          open-set))]
+          (swap! visited conj all-current)
           (if (or (empty? open-set)
                   (= current goal))
             [current came-from g-score f-score]
-            (let [[_ speed dir] (came-from current)
-                  possible-dirs (if (nil? dir) [east south]
+            (let [possible-dirs (if (nil? dir) [east south]
                                     (filter (fn allowed-move? [dir']
                                               (and
                                                (may-move? m current dir')
@@ -72,11 +75,14 @@
               (recur
                ;; open-set
                (reduce
-                (fn [open-set [neighbor _ _]]
+                (fn [open-set [neighbor _ d]]
                   (if (not-any? #(= % neighbor) open-set)
-                    (cons neighbor open-set)
+                    (cons [neighbor
+                           (inc (if (= dir d) (or speed 0) 0))
+                           d]
+                          open-set)
                     open-set))
-                (remove #(= current %) open-set) neighbor->tentative-score)
+                (remove #(= all-current %) open-set) neighbor->tentative-score)
 
                ;; came-from
                (into came-from
