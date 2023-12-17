@@ -30,7 +30,8 @@
     (and (<= 0 y (dec height))
          (<= 0 x (dec width)))))
 
-(def dirs {west [west north south]
+(def dirs {nil [south east]
+           west [west north south]
            east [east north south]
            north [north east west]
            south [south east west]})
@@ -42,71 +43,74 @@
               (reduced Long/MAX_VALUE)
               (+ acc n))) args))
 
-(defn search-path [m]
-  (let [height (count m)
+(defn direction [[y x] [y' x']]
+  (if (= y y')
+    (cond
+      (< x x') east
+      (> x x') west
+      :else nil)
+    (cond
+      (< y y') south
+      (> y y') north
+      :else nil)))
+
+(defn follow-path [prev u]
+  (->> (iterate prev u)
+       (take 3)
+       (partition 2 1)
+       (map #(direction (first %)
+                        (second %)))))
+
+(defn djikstra [m]
+  (let [source [0 0]
+        height (count m)
         width (count (first m))
-        start [0 0]
-        goal [(dec height) (dec width)]]
-    (letfn [(h [pos]
-              (+ (abs (- (first goal) (first pos)))
-                 (abs (- (second goal) (second pos)))))]
-      (loop [open-set (list [start 0 nil])
-             came-from {}
-             g-score {start 0}
-             f-score {start (h start)}]
-        (let [[current speed dir :as all-current]
-              (if (empty? open-set) nil
-                  (reduce (fn find-current [acc n]
-                            (min-key
-                             (fn keyfn [n] (f-score (first n) Long/MAX_VALUE)) acc n))
-                          open-set))]
-          (if (or (empty? open-set)
-                  (= current goal))
-            [current came-from g-score f-score]
-            (let [possible-dirs (if (nil? dir) [east south]
-                                    (filter (fn allowed-move? [dir']
-                                              (may-move? m current dir'))
-                                            (dirs dir)))
-                  new-state
-                  (reduce (fn [{:keys [f-score
-                                       g-score
-                                       open-set
-                                       came-from] :as all} d]
-                            (let [neighbor (d current)
-                                  new-speed (inc (if (= dir d) (or speed 1) 0))
-                                  new-heat (get-in m neighbor)
-                                  tentative-score (safe+ (if (< 3 new-speed)
-                                                           Long/MAX_VALUE
-                                                           0)
-                                                         (if (and (<= 3 speed)
-                                                                  (= dir d))
-                                                           Long/MAX_VALUE
-                                                           0)
-                                                         (g-score current Long/MAX_VALUE)
-                                                         new-heat)]
-                              (if (<= (g-score neighbor Long/MAX_VALUE) tentative-score)
-                                all
-                                {:came-from (assoc came-from neighbor current)
-                                 :g-score (assoc g-score neighbor tentative-score)
-                                 :f-score (assoc f-score neighbor (+ tentative-score (h neighbor)))
-                                 :open-set (if (not-any? #(= % [neighbor new-speed d]) open-set)
-                                             (cons [neighbor new-speed d]
-                                                   open-set)
-                                             open-set)})))
-                          {:open-set (remove #(= all-current %) open-set)
-                           :f-score f-score
-                           :g-score g-score
-                           :came-from came-from}
-                          possible-dirs)]
-              (recur
-               ;; open-set
-               (:open-set new-state)
-               ;; came-from
-               (:came-from new-state)
-               ;; g-score
-               (:g-score new-state)
-               ;; f-score
-               (:f-score new-state)))))))))
+        target [(dec height) (dec width)]
+        dist (-> (into {}
+                       (for [y (range height)
+                             x (range width)]
+                         [[y x] Long/MAX_VALUE]))
+                 (assoc source 0))
+        prev {}]
+    (loop [Q (-> (into #{}
+                       (for [y (range height)
+                             x (range width)]
+                         [y x])))
+           dist dist
+           prev prev]
+      (let [u (reduce (fn [acc u]
+                        (if (> (dist acc) (dist u))
+                          u acc)) Q)
+            Q (reduce (fn [acc q] (if (= u q)
+                                    acc (conj acc q))) [] Q)
+
+            previous (prev u)
+            path-here (when previous
+                        (follow-path prev u))
+            speed-limit (= (count (set path-here)) 3)
+            dir (when previous
+                  (direction previous u))
+            possible-directions (->> (dirs dir)
+                                     (filter #(if speed-limit
+                                                (not= % dir)
+                                                %))
+                                     (filter #(may-move? m u %)))
+            neighbours (map #(% u) possible-directions)
+            new-state (reduce (fn [state v]
+                                (let [alt (+ (dist u) (get-in m v))]
+                                  (if (< alt (dist v))
+                                    (-> state
+                                        (update :dist (fn [d] (assoc d v alt)))
+                                        (update :prev (fn [d] (assoc d v u))))
+                                    state)))
+                              {:dist dist
+                               :prev prev}
+                              neighbours)]
+        (if (= u target)
+          [dist prev]
+          (recur Q
+                 (:dist new-state)
+                 (:prev new-state)))))))
 
 (defn reconstruct-path [came-from current]
   (loop [total-path (list current)
@@ -116,9 +120,9 @@
              c')
       total-path)))
 
-(def result (search-path (parse-input sample-input)))
+(def result (djikstra (parse-input sample-input)))
 ((nth result 2) (first result))
-(reconstruct-path (second result) (first result))
+(reconstruct-path (second result) [12 12])
 
 #_(search-path  (parse-input puzzle-input))
 
@@ -126,7 +130,7 @@
   (reduce (fn [acc pos]
             (+ acc (get-in m pos)))
           0
-          (reconstruct-path (second result) (first result))))
+          (reconstruct-path (second result) [12 12])))
 
 (defn visualize [m steps dirs]
   (let [height (count m)
