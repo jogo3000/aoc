@@ -98,7 +98,7 @@
                                  :g-score (assoc g-score neighbor tentative-score)
                                  :f-score (assoc f-score neighbor (+ tentative-score (h neighbor)))
                                  :v-score (assoc v-score neighbor [d new-speed])
-                                 :open-set (if (not-any? #(= % neighbor new-speed d) open-set)
+                                 :open-set (if (not-any? #(= % [neighbor new-speed d]) open-set)
                                              (cons [neighbor new-speed d]
                                                    open-set)
                                              open-set)})))
