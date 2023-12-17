@@ -43,8 +43,8 @@
         start [0 0]
         goal [(dec height) (dec width)]]
     (letfn [(h [pos]
-              (+ (- (first goal) (first pos))
-                 (- (second goal) (second pos))))]
+              (+ (abs (- (first goal) (first pos)))
+                 (abs (- (second goal) (second pos)))))]
       (loop [open-set (list [start 0 nil])
              came-from {}
              g-score {start 0}
@@ -65,53 +65,48 @@
                                                (may-move? m current dir')
                                                (not (and (>= (or speed 0) 3) (= dir dir')))))
                                             (dirs dir)))
-                  neighbor->tentative-score
-                  (for [d possible-dirs
-                        :let [neighbor (d current)
-                              tentative-score (+ (g-score current Long/MAX_VALUE)
-                                                 (get-in m neighbor))]
-                        :when (< tentative-score (g-score neighbor Long/MAX_VALUE))]
-                    [neighbor tentative-score d])]
+                  new-state
+                  (reduce (fn [{:keys [f-score g-score open-set came-from] :as all} d]
+                            (let [neighbor (d current)
+                                  new-speed (inc (if (= dir d) (or speed 0) 0))
+                                  tentative-score (+ (g-score current Long/MAX_VALUE)
+                                                     (get-in m neighbor))]
+                              (if (< (g-score neighbor Long/MAX_VALUE) tentative-score)
+                                all
+                                {:came-from (assoc came-from neighbor current)
+                                 :g-score (assoc g-score neighbor tentative-score)
+                                 :f-score (assoc f-score neighbor (+ tentative-score (h neighbor)))
+                                 :open-set (if (not-any? #(= % [neighbor new-speed d]) open-set)
+                                             (cons [neighbor
+                                                    new-speed
+                                                    d]
+                                                   open-set)
+                                             open-set)})))
+                          {:open-set (remove #(= all-current %) open-set)
+                           :f-score f-score
+                           :g-score g-score
+                           :came-from came-from}
+                          possible-dirs)]
               (recur
                ;; open-set
-               (reduce
-                (fn [open-set [neighbor _ d]]
-                  (if (not-any? #(= % neighbor) open-set)
-                    (cons [neighbor
-                           (inc (if (= dir d) (or speed 0) 0))
-                           d]
-                          open-set)
-                    open-set))
-                (remove #(= all-current %) open-set) neighbor->tentative-score)
-
+               (:open-set new-state)
                ;; came-from
-               (into came-from
-                     (map (fn [[n _ d]] [n [current
-                                            (inc (if (= dir d) (or speed 0) 0))
-                                            d]]))
-                     neighbor->tentative-score)
-
+               (:came-from new-state)
                ;; g-score
-               (into g-score
-                     (map (juxt first second))
-                     neighbor->tentative-score)
-
+               (:g-score new-state)
                ;; f-score
-               (into f-score
-                     (map (fn [[neighbor tentative-score _]]
-                            [neighbor (+ tentative-score (h neighbor))]))
-                     neighbor->tentative-score)))))))))
+               (:f-score new-state)))))))))
 
 (defn reconstruct-path [came-from current]
   (loop [total-path (list current)
          current current]
-    (if-let [c' (first (came-from current))]
+    (if-let [c' (came-from current)]
       (recur (cons c' total-path)
              c')
       total-path)))
 
 (def result (search-path (parse-input sample-input)))
-
+((nth result 2) (first result))
 (reconstruct-path (second result) (first result))
 
 (let [m (parse-input sample-input)]
@@ -136,7 +131,7 @@
                 (= north d) \^
                 (= south d) \v
                 :else \#))
-            \.)))))))
+           (get-in m [y x]))))))))
 
 (let [m (parse-input sample-input)
       p (set (reconstruct-path (second result) (first result)))]
