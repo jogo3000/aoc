@@ -23,14 +23,12 @@
 (defn west [[y x]]
   [y (dec x)])
 
-(defn may-move? [m pos speed dir]
-  (if (>= speed 3)
-    false
-    (let [height (count m)
-          width (count (first m))
-          [y x] (dir pos)]
-      (and (<= 0 y height)
-           (<= 0 x width)))))
+(defn may-move? [m pos dir]
+  (let [height (count m)
+        width (count (first m))
+        [y x] (dir pos)]
+    (and (<= 0 y (dec height))
+         (<= 0 x (dec width)))))
 
 (def dirs {west [west north south]
            east [east north south]
@@ -59,13 +57,15 @@
             [current came-from g-score f-score]
             (let [[speed dir] (came-from current)
                   possible-dirs (if (nil? dir) [south east]
-                                    (filter (fn [dir]
-                                              (may-move? m current (or speed 0) dir))
+                                    (filter (fn allowed-move? [dir']
+                                              (and
+                                               (may-move? m current dir')
+                                               (not (and (>= (or speed 1) 3) (= dir dir')))))
                                             (dirs dir)))
                   neighbor->tentative-score
                   (for [d possible-dirs
                         :let [neighbor (d current)
-                              tentative-score (+ (g-score current)
+                              tentative-score (+ (g-score current Long/MAX_VALUE)
                                                  (get-in m neighbor))]
                         :when (< tentative-score (g-score neighbor Long/MAX_VALUE))]
                     [neighbor tentative-score d])]
@@ -80,7 +80,7 @@
 
                ;; came-from
                (into came-from
-                     (map (fn [[n _ d]] [n [(inc (or speed 0)) d]]))
+                     (map (fn [[n _ d]] [n [(inc (or speed 1)) d]]))
                      neighbor->tentative-score)
 
                ;; g-score
