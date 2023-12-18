@@ -141,19 +141,29 @@ U 2 (#7a21e3)
                            (follow d [y x])) position))]
         (recur (conj trench new-pos) remaining new-pos)))))
 
-(->> (parse-input sample)
-     make-trench2
-     reverse
-     (partition 2 1)
-     (map (fn [[[a c] [b d]]]
-            (determinant a b c d)))
-     (reduce +)
-     (* 0.5))  ;; 42 this should be 62 for the idea to work
 
-(->> [[1 6] [3 1] [7 2] [4 4] [8 5] [1 6]]
-     (partition 2 1)
-     (map (fn [[[a c] [b d]]]
-            (determinant a b c d)))
-     (reduce +)
-     (* 0.5))
-;; 16.5 Yields correct result
+(defn shoelace [points]
+  (abs (->> (partition 2 1 points)
+            (map (fn [[[a c] [b d]]]
+                   (determinant a b c d)))
+            (reduce +)
+            (* 0.5))))
+
+(shoelace [[1 6] [3 1] [7 2] [4 4] [8 5] [1 6]]) ;; 16.5 seems to be the correct implementation
+
+(->> (parse-input sample)
+     make-trench
+     shoelace)  ;; 42 this should be 62 for the idea to work
+
+(shoelace [[0 0] [0 5] [5 5] [5 0] [0 0]])
+
+(make-trench (parse-input sample))
+
+;; Ok so the shoelace isn't working because it doesn't calculate the trench edges as part of the thing
+;; Do I need to use the version that counts 3d shoelace?
+
+;; https://en.wikipedia.org/wiki/Shoelace_formula#Generalization
+;; Shoelace in 3d sum of successive cross products
+
+;; Matrix cross product
+;; https://en.wikipedia.org/wiki/Cross_product#Alternative_ways_to_compute
