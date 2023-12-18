@@ -141,18 +141,19 @@ U 2 (#7a21e3)
                            (follow d [y x])) position))]
         (recur (conj trench new-pos) remaining new-pos)))))
 
-(/ (->> (parse-input sample)
-        make-trench2
-        reverse
-        (partition 2 1)
-        (map (fn [[[y1 x1] [y2 x2]]]
-               (determinant y1 y2 x1 x2)))
-        (reduce +)) 2)
+(->> (parse-input sample)
+     make-trench2
+     reverse
+     (partition 2 1)
+     (map (fn [[[a c] [b d]]]
+            (determinant a b c d)))
+     (reduce +)
+     (* 0.5))  ;; 42 this should be 62 for the idea to work
 
-(/
- (->> [[1 6] [3 1] [7 2] [4 4] [8 5] [1 6]]
-      (partition 2 1)
-      (map (fn [[[y1 x1] [y2 x2]]]
-             (determinant y1 y2 x1 x2)))
-      (reduce +))
- 2.0)
+(->> [[1 6] [3 1] [7 2] [4 4] [8 5] [1 6]]
+     (partition 2 1)
+     (map (fn [[[a c] [b d]]]
+            (determinant a b c d)))
+     (reduce +)
+     (* 0.5))
+;; 16.5 Yields correct result
