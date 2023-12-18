@@ -158,8 +158,8 @@ U 2 (#7a21e3)
 (defn shoelace [points]
   (.abs (->> points
              (partition 2 1)
-             (map (fn [[[^BigDecimal a ^BigDecimal c] [^BigDecimal b ^BigDecimal d]]]
-                    (determinant a b c d)))
+             (map (fn [[[^BigDecimal y1 ^BigDecimal x1] [^BigDecimal y2 ^BigDecimal x2]]]
+                    (.subtract (.multiply x1 y2) (.multiply y1 x2))))
              (reduce #(.add %1 %2))
              (.multiply (BigDecimal/valueOf 0.5)))))
 
