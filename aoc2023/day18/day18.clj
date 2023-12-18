@@ -125,39 +125,55 @@ U 2 (#7a21e3)
 
 
 ;; Part deux
-(defn determinant [a b c d]
+(defn determinant [^BigDecimal a
+                   ^BigDecimal b
+                   ^BigDecimal c
+                   ^BigDecimal d]
   (.subtract (.multiply a d) (.multiply b c)))
 
 (parse-input sample)
 
+(set! *warn-on-reflection* true)
+
+(defn followbig [d [^BigDecimal y ^BigDecimal x]]
+  (case d
+    "U" [(.subtract y BigDecimal/ONE) x]
+    "D" [(.add y BigDecimal/ONE) x]
+    "L" [y (.subtract x BigDecimal/ONE)]
+    "R" [y (.add x BigDecimal/ONE)]))
+
 (defn make-trench2 [instructions]
-  (loop [trench [[0 0]]
+  (loop [trench [[BigDecimal/ZERO BigDecimal/ZERO]]
          instructions instructions
-         position [0 0]]
+         position [BigDecimal/ZERO BigDecimal/ZERO]]
     (if (empty? instructions)
       trench
       (let [[[_ _ c] & remaining] instructions
-            distance (-> c (subs 2 7) (Integer/parseInt 16))
+            distance (-> c (subs 2 7) (Integer/parseInt 16) long)
             d (-> c (subs 7 8) (case "0" "R" "1" "D" "2" "L" "3" "U"))
             new-pos
             (->> (range distance)
                  (reduce (fn [[y x] _]
-                           (follow d [y x])) position))]
+                           (followbig d [y x])) position))]
         (recur (conj trench new-pos) remaining new-pos)))))
 
 
 (defn shoelace [points]
-  (abs (->> points
-            (partition 2 1)
-            (map (fn [[[a c] [b d]]]
-                   (determinant (BigDecimal/valueOf a)
-                                (BigDecimal/valueOf b)
-                                (BigDecimal/valueOf c)
-                                (BigDecimal/valueOf d))))
-            (reduce #(.add %1 %2))
-            (.multiply (BigDecimal/valueOf 0.5)))))
+  (.abs (->> points
+             (partition 2 1)
+             (map (fn [[[^long a ^long c] [^long b ^long d]]]
+                    (determinant (BigDecimal/valueOf a)
+                                 (BigDecimal/valueOf b)
+                                 (BigDecimal/valueOf c)
+                                 (BigDecimal/valueOf d))))
+             (reduce #(.add %1 %2))
+             (.multiply (BigDecimal/valueOf 0.5)))))
 
 (->> (parse-input sample)
      (make-trench2)
      shoelace
      (.toPlainString))
+
+(->> (parse-input sample)
+     (make-trench2)
+     shoelace)
