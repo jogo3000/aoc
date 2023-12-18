@@ -79,63 +79,57 @@
         dist (-> (into {}
                        (for [y (range height)
                              x (range width)]
-                         [[y x] Long/MAX_VALUE]))
-                 (assoc source 0))
-        prev {}]
-    (loop [Q (-> (into #{}
-                       (for [y (range height)
-                             x (range width)]
-                         [y x])))
-           dist dist
-           prev prev]
-      (let [u (reduce (fn [acc u]
-                        (if (> (dist acc) (dist u))
+                         [[y x] [Long/MAX_VALUE []]]))
+                 (assoc source [0 []]))]
+    (loop [Q #{[source]}
+           dist dist]
+      (let [u (reduce (fn priority-pick [acc u]
+                        (if (< (first (dist (first acc))) (first (dist (first u))))
                           u acc)) Q)
             Q (reduce (fn [acc q] (if (= u q)
                                     acc (conj acc q))) [] Q)
 
-            previous (prev u)
-            path-here (when previous
-                        (follow-path-back prev u))
-            speed-limit (= (count (set path-here)) 1)
-            _ (println path-here)
-            _ (when speed-limit (println "limited"))
-            dir (when previous
-                  (direction previous u))
+            path-here (when (<= 4 (count u))
+                        (->> (take 4 u)
+                             (partition 2 1)
+                             (map #(direction (first %) (second %)))))
+            speed-limit (and (= (count path-here) 3)
+                             (= (count (set path-here)) 1))
+            _ (when speed-limit (println "limiting speed" path-here (set path-here)))
+            dir (when path-here
+                  (first path-here))
             possible-directions (->> (dirs dir)
                                      (filter #(if speed-limit
                                                 (not= % dir)
                                                 %))
-                                     (filter #(may-move? m u %)))
-            neighbours (map #(% u) possible-directions)
-            new-state (reduce (fn [state v]
-                                (let [alt (+ (dist u) (get-in m v))]
-                                  (if (< alt (dist v))
-                                    (-> state
-                                        (update :dist (fn [d] (assoc d v alt)))
-                                        (update :prev (fn [d] (assoc d v u))))
-                                    state)))
-                              {:dist dist
-                               :prev prev}
-                              neighbours)]
-        (if (= u target)
-          [dist prev]
+                                     (filter #(may-move? m (first u) %)))
+            neighbours (map #(% (first u)) possible-directions)
+            [Q dist] (reduce (fn [[Q dist] v]
+                               (let [alt (+ (first (dist (first u))) (get-in m v))]
+                                 (if (< alt (first (dist v)))
+                                   [(cons (cons v u) Q) (assoc dist v [alt (cons v u)])]
+                                   [Q dist])))
+                             [Q dist]
+                             neighbours)]
+        (if (or (empty? Q)
+                (= (first u) target))
+          dist
           (recur Q
-                 (:dist new-state)
-                 (:prev new-state)))))))
+                 dist))))))
 
 (def result (djikstra (parse-input sample-input)))
 
-(reconstruct-path (second result) [12 12])
-(follow-path (second result) [12 12])
+(result [12 12])
+
+(reconstruct-path result [12 12])
 
 #_(search-path  (parse-input puzzle-input))
 
-(let [m (parse-input sample-input)]
+#_(let [m (parse-input sample-input)]
   (reduce (fn [acc pos]
             (+ acc (get-in m pos)))
           0
-          (reconstruct-path (second result) [12 12])))
+          (reconstruct-path result [12 12])))
 
 (defn visualize [m steps dirs]
   (let [height (count m)
@@ -156,6 +150,6 @@
            (get-in m [y x]))))))))
 
 (let [m (parse-input sample-input)
-      p (set (reconstruct-path (second result) [12 12]))]
+      p (set (second (result [12 12])))]
   (println "---------")
-  (println (visualize m p (second result))))
+  (println (visualize m p {})))
