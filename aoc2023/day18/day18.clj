@@ -126,7 +126,9 @@ U 2 (#7a21e3)
 
 ;; Part deux
 (defn determinant [a b c d]
-  (- (* a d) (* b c)))
+  (.subtract (.multiply a d) (.multiply b c)))
+
+(parse-input sample)
 
 (defn make-trench2 [instructions]
   (loop [trench [[0 0]]
@@ -134,50 +136,28 @@ U 2 (#7a21e3)
          position [0 0]]
     (if (empty? instructions)
       trench
-      (let [[[d n _] & remaining] instructions
+      (let [[[_ _ c] & remaining] instructions
+            distance (-> c (subs 2 7) (Integer/parseInt 16))
+            d (-> c (subs 7 8) (case "0" "R" "1" "D" "2" "L" "3" "U"))
             new-pos
-            (->> (range n)
+            (->> (range distance)
                  (reduce (fn [[y x] _]
                            (follow d [y x])) position))]
         (recur (conj trench new-pos) remaining new-pos)))))
 
 
 (defn shoelace [points]
-  (abs (->> (partition 2 1 points)
+  (abs (->> points
+            (partition 2 1)
             (map (fn [[[a c] [b d]]]
-                   (determinant a b c d)))
-            (reduce +)
-            (* 0.5))))
-
-(shoelace [[1 6] [3 1] [7 2] [4 4] [8 5] [1 6]]) ;; 16.5 seems to be the correct implementation
+                   (determinant (BigDecimal/valueOf a)
+                                (BigDecimal/valueOf b)
+                                (BigDecimal/valueOf c)
+                                (BigDecimal/valueOf d))))
+            (reduce #(.add %1 %2))
+            (.multiply (BigDecimal/valueOf 0.5)))))
 
 (->> (parse-input sample)
-     make-trench
-     shoelace)  ;; 42 this should be 62 for the idea to work
-
-(shoelace [[0 0] [0 5] [5 5] [5 0] [0 0]])
-
-(* 2 (shoelace [[0 0] [0 2] [1 2] [1 3] [2 3] [2 2] [3 2] [3 0] [0 0]])) ; 14.0
-;; Shoelace itself seems to work, am I applying it wrong?
-;; ###
-;; # ##
-;; # ##
-;; ###
-
-(* 2 (shoelace [[0 0] [0 3] [1 3] [1 2] [3 2] [3 3] [4 3] [4 0] [0 0]])) ; 20 -> should be 19 squares
-;; ####
-;; # ##
-;; # #
-;; # ##
-;; ####
-
-(make-trench (parse-input sample))
-
-;; Ok so the shoelace isn't working because it doesn't calculate the trench edges as part of the thing
-;; Do I need to use the version that counts 3d shoelace? ah, this still calculates the area
-
-;; https://en.wikipedia.org/wiki/Shoelace_formula#Generalization
-;; Shoelace in 3d sum of successive cross products
-
-;; Matrix cross product
-;; https://en.wikipedia.org/wiki/Cross_product#Alternative_ways_to_compute
+     (make-trench2)
+     shoelace
+     (.toPlainString))
