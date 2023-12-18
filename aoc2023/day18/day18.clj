@@ -135,12 +135,12 @@ U 2 (#7a21e3)
 
 (set! *warn-on-reflection* true)
 
-(defn followbig [d [^BigDecimal y ^BigDecimal x]]
+(defn followbig [d [^BigDecimal y ^BigDecimal x] ^BigDecimal amount]
   (case d
-    "U" [(.subtract y BigDecimal/ONE) x]
-    "D" [(.add y BigDecimal/ONE) x]
-    "L" [y (.subtract x BigDecimal/ONE)]
-    "R" [y (.add x BigDecimal/ONE)]))
+    "U" [(.subtract y amount) x]
+    "D" [(.add y amount) x]
+    "L" [y (.subtract x amount)]
+    "R" [y (.add x amount)]))
 
 (defn make-trench2 [instructions]
   (loop [trench [[BigDecimal/ZERO BigDecimal/ZERO]]
@@ -149,12 +149,9 @@ U 2 (#7a21e3)
     (if (empty? instructions)
       trench
       (let [[[_ _ c] & remaining] instructions
-            distance (-> c (subs 2 7) (Integer/parseInt 16) long)
+            distance (-> c (subs 2 7) (Integer/parseInt 16) BigDecimal/valueOf)
             d (-> c (subs 7 8) (case "0" "R" "1" "D" "2" "L" "3" "U"))
-            new-pos
-            (->> (range distance)
-                 (reduce (fn [[y x] _]
-                           (followbig d [y x])) position))]
+            new-pos (followbig d position distance)]
         (recur (conj trench new-pos) remaining new-pos)))))
 
 
