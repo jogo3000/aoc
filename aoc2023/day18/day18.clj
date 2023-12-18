@@ -149,7 +149,7 @@ U 2 (#7a21e3)
     (if (empty? instructions)
       trench
       (let [[[_ _ c] & remaining] instructions
-            distance (-> c (subs 2 7) (Integer/parseInt 16) BigDecimal/valueOf)
+            distance (-> c (subs 2 7) (Integer/parseInt 16) long BigDecimal/valueOf)
             d (-> c (subs 7 8) (case "0" "R" "1" "D" "2" "L" "3" "U"))
             new-pos (followbig d position distance)]
         (recur (conj trench new-pos) remaining new-pos)))))
