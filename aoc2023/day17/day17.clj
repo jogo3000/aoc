@@ -112,7 +112,7 @@
                              [Q dist]
                              neighbours)]
         (if (or (empty? Q)
-                (= (first u) target))
+                #_(= (first u) target))
           dist
           (recur Q
                  dist))))))
