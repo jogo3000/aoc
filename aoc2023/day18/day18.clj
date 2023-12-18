@@ -157,10 +157,17 @@ U 2 (#7a21e3)
 
 (shoelace [[0 0] [0 5] [5 5] [5 0] [0 0]])
 
+(* 2 (shoelace [[0 0] [0 2] [1 2] [1 3] [2 3] [2 2] [3 2] [3 0] [0 0]])) ; 14.0
+;; Shoelace itself seems to work, am I applying it wrong?
+;; ###
+;; # ##
+;; # ##
+;; ###
+
 (make-trench (parse-input sample))
 
 ;; Ok so the shoelace isn't working because it doesn't calculate the trench edges as part of the thing
-;; Do I need to use the version that counts 3d shoelace?
+;; Do I need to use the version that counts 3d shoelace? ah, this still calculates the area
 
 ;; https://en.wikipedia.org/wiki/Shoelace_formula#Generalization
 ;; Shoelace in 3d sum of successive cross products
