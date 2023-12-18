@@ -164,6 +164,13 @@ U 2 (#7a21e3)
 ;; # ##
 ;; ###
 
+(* 2 (shoelace [[0 0] [0 3] [1 3] [1 2] [3 2] [3 3] [4 3] [4 0] [0 0]])) ; 20 -> should be 19 squares
+;; ####
+;; # ##
+;; # #
+;; # ##
+;; ####
+
 (make-trench (parse-input sample))
 
 ;; Ok so the shoelace isn't working because it doesn't calculate the trench edges as part of the thing
