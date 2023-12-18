@@ -89,10 +89,10 @@
             Q (reduce (fn [acc q] (if (= u q)
                                     acc (conj acc q))) [] Q)
 
-            path-here (when (<= 4 (count u))
+            path-here (when (<= 3 (count u))
                         (->> (take 4 u)
                              (partition 2 1)
-                             (map #(direction (first %) (second %)))))
+                             (map #(direction (second %) (first %)))))
             speed-limit (and (= (count path-here) 3)
                              (= (count (set path-here)) 1))
             _ (when speed-limit (println "limiting speed" path-here (set path-here)))
