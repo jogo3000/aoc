@@ -122,3 +122,37 @@ U 2 (#7a21e3)
 (measure-trench sample) ; 62
 
 (measure-trench (slurp "day18/input.txt")) ; 40745
+
+
+;; Part deux
+(defn determinant [a b c d]
+  (- (* a d) (* b c)))
+
+(defn make-trench2 [instructions]
+  (loop [trench [[0 0]]
+         instructions instructions
+         position [0 0]]
+    (if (empty? instructions)
+      trench
+      (let [[[d n _] & remaining] instructions
+            new-pos
+            (->> (range n)
+                 (reduce (fn [[y x] _]
+                           (follow d [y x])) position))]
+        (recur (conj trench new-pos) remaining new-pos)))))
+
+(/ (->> (parse-input sample)
+        make-trench2
+        reverse
+        (partition 2 1)
+        (map (fn [[[y1 x1] [y2 x2]]]
+               (determinant y1 y2 x1 x2)))
+        (reduce +)) 2)
+
+(/
+ (->> [[1 6] [3 1] [7 2] [4 4] [8 5] [1 6]]
+      (partition 2 1)
+      (map (fn [[[y1 x1] [y2 x2]]]
+             (determinant y1 y2 x1 x2)))
+      (reduce +))
+ 2.0)
