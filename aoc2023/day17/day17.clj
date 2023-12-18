@@ -54,9 +54,19 @@
       (> y y') north
       :else nil)))
 
-(defn follow-path [prev u]
-  (->> (iterate prev u)
-       (take 3)
+(defn reconstruct-path [came-from current]
+  (loop [total-path (list current)
+         current current]
+    (if-let [c' (came-from current)]
+      (recur (cons c' total-path)
+             c')
+      total-path)))
+
+(defn follow-path-back [prev u]
+  (->> (reconstruct-path prev u)
+       (reverse)
+       (take 4)
+       (remove nil?)
        (partition 2 1)
        (map #(direction (first %)
                         (second %)))))
@@ -86,8 +96,10 @@
 
             previous (prev u)
             path-here (when previous
-                        (follow-path prev u))
-            speed-limit (= (count (set path-here)) 3)
+                        (follow-path-back prev u))
+            speed-limit (= (count (set path-here)) 1)
+            _ (println path-here)
+            _ (when speed-limit (println "limited"))
             dir (when previous
                   (direction previous u))
             possible-directions (->> (dirs dir)
@@ -112,17 +124,10 @@
                  (:dist new-state)
                  (:prev new-state)))))))
 
-(defn reconstruct-path [came-from current]
-  (loop [total-path (list current)
-         current current]
-    (if-let [c' (came-from current)]
-      (recur (cons c' total-path)
-             c')
-      total-path)))
-
 (def result (djikstra (parse-input sample-input)))
-((nth result 2) (first result))
+
 (reconstruct-path (second result) [12 12])
+(follow-path (second result) [12 12])
 
 #_(search-path  (parse-input puzzle-input))
 
@@ -151,6 +156,6 @@
            (get-in m [y x]))))))))
 
 (let [m (parse-input sample-input)
-      p (set (reconstruct-path (second result) (first result)))]
+      p (set (reconstruct-path (second result) [12 12]))]
   (println "---------")
   (println (visualize m p (second result))))
