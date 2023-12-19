@@ -121,6 +121,7 @@ hdj{m>838:A,pv}
                               [(+ ps (dfs (second rule) pq))
                                {"x" [0 0] "m" [0 0] "a" [0 0] "s" [0 0]}]
 
+                              ;; rfg{s<537:gd,x>2440:R,A}
                               (= (first rule) \>)
                               [(+ ps
                                   (dfs (last rule)
