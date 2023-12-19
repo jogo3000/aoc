@@ -118,13 +118,13 @@
                                  (dirs dir))]
             (doseq [v neighbours]
               (let [dir (direction pos v)]
-                (.add Q (->QueueElement (+ heat-loss (get-in m v))
-                                        v
-                                        (conj (:visited u) v)
-                                        (if (not= dir (:dir u))
-                                          1
-                                          (inc (:speed u)))
-                                        dir))))
+                (.offer Q (->QueueElement (+ heat-loss (get-in m v))
+                                          v
+                                          (conj (:visited u) v)
+                                          (if (not= dir (:dir u))
+                                            1
+                                            (inc (:speed u)))
+                                          dir))))
             (recur)))))))
 
 ;; I think this needs a more efficient priority queue
