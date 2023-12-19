@@ -163,11 +163,35 @@ U 2 (#7a21e3)
              (reduce #(.add %1 %2))
              (.multiply (BigDecimal/valueOf 0.5)))))
 
-(->> (parse-input sample)
-     (make-trench2)
-     shoelace
-     (.toPlainString))
+(let [trench
+      (->> (parse-input sample)
+           (make-trench2))
+      interior (shoelace trench)
+      path-length (->> trench
+                       (partition 2 1)
+                       (reduce (fn [acc [n1 n2]]
+                                 (let [y (.abs (.subtract (first n1) (first n2)))
+                                       x (.abs (.subtract (second n1) (second n2)))]
+                                   (-> acc
+                                       (.add y)
+                                       (.add x)))) BigDecimal/ZERO))
+      correction (.add (.divide path-length (BigDecimal/valueOf 2)) BigDecimal/ONE)]
+  (.add interior correction))
 
-(->> (parse-input sample)
-     (make-trench2)
-     shoelace)
+;; 952408144115.0M Correct
+
+(let [trench
+      (->> (parse-input (slurp "day18/input.txt"))
+           (make-trench2))
+      interior (shoelace trench)
+      path-length (->> trench
+                       (partition 2 1)
+                       (reduce (fn [acc [n1 n2]]
+                                 (let [y (.abs (.subtract (first n1) (first n2)))
+                                       x (.abs (.subtract (second n1) (second n2)))]
+                                   (-> acc
+                                       (.add y)
+                                       (.add x)))) BigDecimal/ZERO))
+      correction (.add (.divide path-length (BigDecimal/valueOf 2)) BigDecimal/ONE)]
+  (.add interior correction))
+;; 90111113594927.0M Correct
