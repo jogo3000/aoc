@@ -99,7 +99,7 @@
     (.add Q (->QueueElement 0 source #{source} 0 nil))
     (loop []
       (let [u (.remove Q)]
-        (if (= (first (:path u)) target)
+        (if (= (:pos u) target)
           u
           (let [heat-loss (:heat u)
                 pos (:pos u)
