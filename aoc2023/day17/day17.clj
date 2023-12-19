@@ -71,57 +71,57 @@
        (map #(direction (first %)
                         (second %)))))
 
+(defn evaluate-path [m p]
+  (->> p
+       butlast
+       (map #(get-in m %))
+       (reduce +)))
+
 (defn djikstra [m]
   (let [source [0 0]
         height (count m)
         width (count (first m))
-        target [(dec height) (dec width)]
-        dist (-> (into {}
-                       (for [y (range height)
-                             x (range width)]
-                         [[y x] [Long/MAX_VALUE []]]))
-                 (assoc source [0 []]))]
-    (loop [Q #{[source]}
-           dist dist]
+        target [(dec height) (dec width)]]
+    (loop [Q #{[0 [source]]}]
+      (println (count Q))
       (let [u (reduce (fn priority-pick [acc u]
-                        (if (< (first (dist (first acc))) (first (dist (first u))))
-                          u acc)) Q)
-            Q (reduce (fn [acc q] (if (= u q)
-                                    acc (conj acc q))) [] Q)
-
-            path-here (when (<= 3 (count u))
-                        (->> (take 4 u)
-                             (partition 2 1)
-                             (map #(direction (second %) (first %)))))
-            speed-limit (and (= (count path-here) 3)
-                             (= (count (set path-here)) 1))
-            _ (when speed-limit (println "limiting speed" path-here (set path-here)))
-            dir (when path-here
-                  (first path-here))
-            possible-directions (->> (dirs dir)
-                                     (filter #(if speed-limit
-                                                (not= % dir)
-                                                %))
-                                     (filter #(may-move? m (first u) %)))
-            neighbours (map #(% (first u)) possible-directions)
-            [Q dist] (reduce (fn [[Q dist] v]
-                               (let [alt (+ (first (dist (first u))) (get-in m v))]
-                                 (if (< alt (first (dist v)))
-                                   [(cons (cons v u) Q) (assoc dist v [alt (cons v u)])]
-                                   [Q dist])))
-                             [Q dist]
-                             neighbours)]
+                        (if (< (first acc) (first u))
+                          acc u)) Q)]
         (if (or (empty? Q)
-                #_(= (first u) target))
-          dist
-          (recur Q
-                 dist))))))
+                (= (first (second u)) target))
+          u
+          (let [Q (disj Q u)
 
+                heat-loss (first u)
+                pos (second u)
+                path-here (when (<= 3 (count pos))
+                            (->> (take 4 pos)
+                                 (partition 2 1)
+                                 (map #(direction (second %) (first %)))))
+                speed-limit (and (= (count path-here) 3)
+                                 (= (count (set path-here)) 1))
+                #_#__ (when speed-limit (println "limiting speed" path-here (set path-here)))
+                dir (when path-here
+                      (first path-here))
+                possible-directions (->> (dirs dir)
+                                         (filter #(if speed-limit
+                                                    (not= % dir)
+                                                    %))
+                                         (filter #(may-move? m (first pos) %)))
+                neighbours (map #(% (first pos)) possible-directions)
+                Q (into Q
+                        (map (fn [v] [(+ heat-loss
+                                         (get-in m v))
+                                      (cons v pos)]))
+                        neighbours)]
+            (recur Q)))))))
+
+;; I think this needs a more efficient priority queue
 (def result (djikstra (parse-input sample-input)))
 
-(result [12 12])
+#_(result [12 12])
 
-(reconstruct-path result [12 12])
+#_(reconstruct-path result [12 12])
 
 #_(search-path  (parse-input puzzle-input))
 
@@ -149,7 +149,7 @@
                 :else \#))
            (get-in m [y x]))))))))
 
-(let [m (parse-input sample-input)
+#_(let [m (parse-input sample-input)
       p (set (second (result [12 12])))]
   (println "---------")
   (println (visualize m p {})))
