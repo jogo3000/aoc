@@ -103,21 +103,22 @@
           u
           (let [heat-loss (:heat u)
                 pos (:path u)
-                speed-limit (= (:speed u) 3)
+                speed-limit (>= (:speed u) 3)
                 dir (:dir u)
-                possible-directions (->> (dirs dir)
-                                         (filter #(if speed-limit
-                                                    (not= % dir)
-                                                    %))
-                                         (filter #(may-move? m (first pos) %)))
-                neighbours (->> possible-directions
-                                (map #(% (first pos)))
-                                (remove (fn [p] (some #(= p %) pos))))]
+                neighbours (into []
+                                 (comp
+                                  (filter #(if speed-limit
+                                             (not= % dir)
+                                             %))
+                                  (filter #(may-move? m (first pos) %))
+                                  (map #(% (first pos)))
+                                  (remove (fn [p] (some #(= p %) pos))))
+                                 (dirs dir))]
             (doseq [v neighbours]
               (let [dir (direction (first pos) v)]
                 (.add Q (->QueueElement (+ heat-loss (get-in m v))
                                         (cons v pos)
-                                        (if (= dir (:dir u))
+                                        (if (not= dir (:dir u))
                                           1
                                           (inc (:speed u)))
                                         dir))))
