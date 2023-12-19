@@ -78,7 +78,7 @@
        (map #(get-in m %))
        (reduce +)))
 
-(defrecord QueueElement [heat path speed dir])
+(defrecord QueueElement [heat pos visited speed dir])
 
 (defn djikstra [m]
   (let [source [0 0]
@@ -88,21 +88,21 @@
         Q (PriorityQueue. (reify
                             Comparator
                             (compare ^int [this o1 o2]
-                              (let [[y1 x1] (first (:path o1))
-                                    [y2 x2] (first (:path o2))]
+                              (let [[y1 x1] (:pos o1)
+                                    [y2 x2] (:pos o2)]
                                 (- (+ (:heat o1)
                                       (+ (- max-y y1)
                                          (- max-x x1)))
                                    (+ (:heat o2)
                                       (+ (- max-y y2)
                                          (- max-x x2))))))))]
-    (.add Q (->QueueElement 0 [source] 0 nil))
+    (.add Q (->QueueElement 0 source #{source} 0 nil))
     (loop []
       (let [u (.remove Q)]
         (if (= (first (:path u)) target)
           u
           (let [heat-loss (:heat u)
-                pos (:path u)
+                pos (:pos u)
                 speed-limit (>= (:speed u) 3)
                 dir (:dir u)
                 neighbours (into []
@@ -110,14 +110,15 @@
                                   (filter #(if speed-limit
                                              (not= % dir)
                                              %))
-                                  (filter #(may-move? m (first pos) %))
-                                  (map #(% (first pos)))
-                                  (remove (fn [p] (some #(= p %) pos))))
+                                  (filter #(may-move? m pos %))
+                                  (map #(% pos))
+                                  (remove (:visited u)))
                                  (dirs dir))]
             (doseq [v neighbours]
-              (let [dir (direction (first pos) v)]
+              (let [dir (direction pos v)]
                 (.add Q (->QueueElement (+ heat-loss (get-in m v))
-                                        (cons v pos)
+                                        v
+                                        (conj (:visited u) v)
                                         (if (not= dir (:dir u))
                                           1
                                           (inc (:speed u)))
