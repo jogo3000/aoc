@@ -103,35 +103,37 @@ hdj{m>838:A,pv}
                   (str/split-lines wfs))]
     wfs))
 
+(count (range 3999 4001))
 (let [wfs (parse-input2 sample)
-      pq {"x" 4000
-          "m" 4000
-          "a" 4000
-          "s" 4000}]
+      pq {"x" [1 4000]
+          "m" [1 4000]
+          "a" [1 4000]
+          "s" [1 4000]}]
   ((fn dfs [wf-id pq]
      (cond
        (= wf-id "R") 0
-       (= wf-id "A") (->> pq vals (reduce *))
+       (= wf-id "A") (->> pq vals (map (fn [[start end]] (- (inc end) start))) (reduce *))
        :else
        (let [wf (wfs wf-id)]
          (->> wf
               (reduce (fn [[ps pq] rule]
                         (cond (= (first rule) :always)
                               [(+ ps (dfs (second rule) pq))
-                               {"x" 0 "m" 0 "a" 0 "s" 0}]
+                               {"x" [0 0] "m" [0 0] "a" [0 0] "s" [0 0]}]
 
                               (= (first rule) \>)
                               [(+ ps
                                   (dfs (last rule)
-                                       (update pq (second rule) (fn [q] (abs (- q (nth rule 2)))))))
-                               (update pq (second rule) (fn [q] (abs (- (nth rule 2) q))))]
+                                       (update pq (second rule) (fn [[start end]] [(max start (nth rule 2)) end]))))
+                               (update pq (second rule) (fn [[start end]] [start (min end (dec (nth rule 2)))]))]
 
                               (= (first rule) \<)
                               [(+ ps (dfs (last rule)
-                                          (update pq (second rule) (fn [q] (abs (- (nth rule 2) q))))))
-                               (update pq (second rule) (fn [q] (abs (- q (nth rule 2)))))]))
+                                          (update pq (second rule) (fn [[start end]] [start (min end (dec (nth rule 2)))]))))
+                               (update pq (second rule) (fn [[start end]] [(max start (nth rule 2)) end]))]))
                       [0 pq])
               first))))
    "in" pq))
-;; 587264377052800 <- overestimating!
-;; correct result167409079868000
+
+;;                167474394229030 overestimating, but why?
+;; correct result 167409079868000
