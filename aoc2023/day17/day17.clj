@@ -2,6 +2,8 @@
   (:require [clojure.string :as str])
   (:import [java.util Comparator PriorityQueue]))
 
+(set! *warn-on-reflection* true)
+
 (def sample-input (slurp "day17/sample.txt"))
 (def ^String puzzle-input (slurp "day17/input.txt"))
 
