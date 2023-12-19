@@ -164,3 +164,64 @@
       max-y (dec (count m))
       max-x (dec (count (first m)))]
   (:heat (astar (parse-input (slurp "day17/input.txt")) [0 0] [max-y max-x] (fn [a] (distance [12 12] a)))))
+
+(defn neighbours-in-dir-ultra [m current d']
+  (:acc
+   (reduce (fn [{:keys [acc new-heat
+                        pos] :as all} n]
+             (if (or (> n 10)
+                     (not (may-move? m pos d')))
+               all
+               (let [pos' (d' pos)
+                     heat' (+ new-heat (get-in m pos'))]
+                 {:acc (if (>= n 4) (cons [pos' heat' n d'] acc)
+                           acc)
+                  :new-heat heat'
+                  :pos pos'})))
+           {:acc '()
+            :pos (:pos current)
+            :new-heat 0}
+           (range 1 11))))
+
+(defrecord UltraTask [heat pos dir])
+
+(defn astar-ultra [m start goal]
+  (let [height (count m)
+        width (count (first m))
+        visited (atom #{})
+        g-score (atom {start 0})
+        ^PriorityQueue open-set (PriorityQueue.
+                                 (reify Comparator
+                                   (compare ^int [_this o1 o2]
+                                     (- (+ (:heat o1)
+                                           (distance goal (:pos o1)))
+                                        (+ (:heat o2)
+                                           (distance goal (:pos o2)))))))]
+    (.add open-set (->UltraTask 0 [0 0] nil))
+    (loop []
+      (if (.isEmpty open-set) @g-score
+          (let [current (.remove open-set)]
+            (if (= (:pos current) goal)
+              current
+              (do
+                (when-not (contains? @visited [(:pos current)
+                                               (:dir current)])
+                  (swap! visited conj [(:pos current) (:dir current)])
+                  (doseq [[n-pos n-heat n-speed n-dir]
+                          (->> (dirs (:dir current))
+                               (mapcat (partial neighbours-in-dir-ultra m current)))]
+                    (.add open-set (->UltraTask
+                                    (+ (:heat current) n-heat)
+                                    n-pos
+                                    n-dir))))
+                (recur))))))))
+
+(let [m (parse-input sample-input)
+      max-y (dec (count m))
+      max-x (dec (count (first m)))]
+  (:heat (astar-ultra m [0 0] [max-y max-x])))
+
+(let [m (parse-input (slurp "day17/input.txt"))
+      max-y (dec (count m))
+      max-x (dec (count (first m)))]
+  (:heat (astar-ultra m [0 0] [max-y max-x]))) ; 1037
