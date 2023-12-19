@@ -78,3 +78,60 @@ hdj{m>838:A,pv}
 (sum-accepted sample) ; 19114 - correct
 
 (sum-accepted (slurp "day19/input.txt")) ; 399284
+
+;; Part deux
+
+(defn parse-rule2 [rule]
+  (let [rule-parts (str/split rule #":")
+        target (last rule-parts)]
+    (if (> (count rule-parts) 1)
+      (let [rule (first rule-parts)
+            id (str (get rule 0))
+            gt-or-lt (get rule 1)
+            reference (->> (subs rule 2) parse-long)]
+        [gt-or-lt id reference target])
+      [:always target])))
+
+(defn parse-input2 [input]
+  (let [[wfs _] (-> input str/trim (str/split #"\n\n"))
+        wfs (into {}
+                  (comp
+                   (map (fn split-rules [s] (str/split s #"[\{\}]+")))
+                   (map (fn [[id rules]]
+                          [id (->> (str/split rules #",")
+                                   (map parse-rule2))])))
+                  (str/split-lines wfs))]
+    wfs))
+
+(let [wfs (parse-input2 sample)
+      pq {"x" 4000
+          "m" 4000
+          "a" 4000
+          "s" 4000}]
+  ((fn dfs [wf-id pq]
+     (cond
+       (= wf-id "R") 0
+       (= wf-id "A") (->> pq vals (reduce *))
+       :else
+       (let [wf (wfs wf-id)]
+         (->> wf
+              (reduce (fn [[ps pq] rule]
+                        (cond (= (first rule) :always)
+                              [(+ ps (dfs (second rule) pq))
+                               {"x" 0 "m" 0 "a" 0 "s" 0}]
+
+                              (= (first rule) \>)
+                              [(+ ps
+                                  (dfs (last rule)
+                                       (update pq (second rule) (fn [q] (abs (- q (nth rule 2)))))))
+                               (update pq (second rule) (fn [q] (abs (- (nth rule 2) q))))]
+
+                              (= (first rule) \<)
+                              [(+ ps (dfs (last rule)
+                                          (update pq (second rule) (fn [q] (abs (- (nth rule 2) q))))))
+                               (update pq (second rule) (fn [q] (abs (- q (nth rule 2)))))]))
+                      [0 pq])
+              first))))
+   "in" pq))
+;; 587264377052800 <- overestimating!
+;; correct result167409079868000
