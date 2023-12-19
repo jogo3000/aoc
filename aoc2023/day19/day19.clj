@@ -103,38 +103,41 @@ hdj{m>838:A,pv}
                   (str/split-lines wfs))]
     wfs))
 
-(count (range 3999 4001))
-(let [wfs (parse-input2 sample)
-      pq {"x" [1 4000]
-          "m" [1 4000]
-          "a" [1 4000]
-          "s" [1 4000]}]
-  ((fn dfs [wf-id pq]
-     (cond
-       (= wf-id "R") 0
-       (= wf-id "A") (->> pq vals (map (fn [[start end]] (- (inc end) start))) (reduce *))
-       :else
-       (let [wf (wfs wf-id)]
-         (->> wf
-              (reduce (fn [[ps pq] rule]
-                        (cond (= (first rule) :always)
-                              [(+ ps (dfs (second rule) pq))
-                               {"x" [0 0] "m" [0 0] "a" [0 0] "s" [0 0]}]
+(defn quantum-evaluate-wfs [input]
+  (let [wfs (parse-input2 input)
+        pq {"x" [1 4000]
+            "m" [1 4000]
+            "a" [1 4000]
+            "s" [1 4000]}]
+    ((fn dfs [wf-id pq]
+       (cond
+         (= wf-id "R") 0
+         (= wf-id "A") (->> pq vals (map (fn [[start end]] (- (inc end) start))) (reduce *))
+         :else
+         (let [wf (wfs wf-id)]
+           (->> wf
+                (reduce (fn [[ps pq] rule]
+                          (cond (= (first rule) :always)
+                                [(+ ps (dfs (second rule) pq))
+                                 {"x" [0 0] "m" [0 0] "a" [0 0] "s" [0 0]}]
 
-                              ;; rfg{s<537:gd,x>2440:R,A}
-                              (= (first rule) \>)
-                              [(+ ps
-                                  (dfs (last rule)
-                                       (update pq (second rule) (fn [[start end]] [(max start (nth rule 2)) end]))))
-                               (update pq (second rule) (fn [[start end]] [start (min end (dec (nth rule 2)))]))]
+                                ;; rfg{s<537:gd,x>2440:R,A}
+                                (= (first rule) \>)
+                                [(+ ps
+                                    (dfs (last rule)
+                                         (update pq (second rule) (fn [[start end]] [(max start (inc (nth rule 2))) end]))))
+                                 (update pq (second rule) (fn [[start end]] [start (min end (nth rule 2))]))]
 
-                              (= (first rule) \<)
-                              [(+ ps (dfs (last rule)
-                                          (update pq (second rule) (fn [[start end]] [start (min end (dec (nth rule 2)))]))))
-                               (update pq (second rule) (fn [[start end]] [(max start (nth rule 2)) end]))]))
-                      [0 pq])
-              first))))
-   "in" pq))
+                                (= (first rule) \<)
+                                [(+ ps (dfs (last rule)
+                                            (update pq (second rule) (fn [[start end]] [start (min end (dec (nth rule 2)))]))))
+                                 (update pq (second rule) (fn [[start end]] [(max start (nth rule 2)) end]))]))
+                        [0 pq])
+                first))))
+     "in" pq)))
 
-;;                167474394229030 overestimating, but why?
-;; correct result 167409079868000
+(quantum-evaluate-wfs sample)
+;; Seems to be correct 167409079868000
+;; correct result 167409079868000 from puzzle page
+
+(quantum-evaluate-wfs (slurp "day19/input.txt")) ; 121964982771486
