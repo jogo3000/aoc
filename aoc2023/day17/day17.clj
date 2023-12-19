@@ -78,7 +78,7 @@
        (map #(get-in m %))
        (reduce +)))
 
-(defrecord QueueElement [heat path])
+(defrecord QueueElement [heat path speed dir])
 
 (defn djikstra [m]
   (let [source [0 0]
@@ -96,24 +96,15 @@
                                    (+ (:heat o2)
                                       (+ (- max-y y2)
                                          (- max-x x2))))))))]
-    (.add Q (->QueueElement 0 [source]))
+    (.add Q (->QueueElement 0 [source] 0 nil))
     (loop []
-      #_(java.lang.Thread/sleep 10)
       (let [u (.remove Q)]
-        #_#_(println u)
-        (Thread/sleep 100)
         (if (= (first (:path u)) target)
           u
           (let [heat-loss (:heat u)
                 pos (:path u)
-                path-here (->> (take 4 pos)
-                               (remove nil?)
-                               (partition 2 1)
-                               (map #(direction (second %) (first %))))
-                speed-limit (and (= (count path-here) 3)
-                                 (= (count (set path-here)) 1))
-                dir (when path-here
-                      (first path-here))
+                speed-limit (= (:speed u) 3)
+                dir (:dir u)
                 possible-directions (->> (dirs dir)
                                          (filter #(if speed-limit
                                                     (not= % dir)
@@ -123,7 +114,13 @@
                                 (map #(% (first pos)))
                                 (remove (fn [p] (some #(= p %) pos))))]
             (doseq [v neighbours]
-              (.add Q (->QueueElement (+ heat-loss (get-in m v)) (cons v pos))))
+              (let [dir (direction (first pos) v)]
+                (.add Q (->QueueElement (+ heat-loss (get-in m v))
+                                        (cons v pos)
+                                        (if (= dir (:dir u))
+                                          1
+                                          (inc (:speed u)))
+                                        dir))))
             (recur)))))))
 
 ;; I think this needs a more efficient priority queue
