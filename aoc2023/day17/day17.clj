@@ -1,5 +1,6 @@
 (ns day17
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str])
+  (:import [java.util Comparator PriorityQueue]))
 
 (def sample-input (slurp "day17/sample.txt"))
 (def ^String puzzle-input (slurp "day17/input.txt"))
@@ -77,30 +78,40 @@
        (map #(get-in m %))
        (reduce +)))
 
+(defrecord QueueElement [heat path])
+
 (defn djikstra [m]
   (let [source [0 0]
-        height (count m)
-        width (count (first m))
-        target [(dec height) (dec width)]]
-    (loop [Q #{[0 [source]]}]
-      (println (count Q))
-      (let [u (reduce (fn priority-pick [acc u]
-                        (if (< (first acc) (first u))
-                          acc u)) Q)]
-        (if (or (empty? Q)
-                (= (first (second u)) target))
+        max-y (dec (count m))
+        max-x (dec (count (first m)))
+        target [max-y max-x]
+        Q (PriorityQueue. (reify
+                            Comparator
+                            (compare ^int [this o1 o2]
+                              (let [[y1 x1] (first (:path o1))
+                                    [y2 x2] (first (:path o2))]
+                                (- (+ (:heat o1)
+                                      (+ (- max-y y1)
+                                         (- max-x x1)))
+                                   (+ (:heat o2)
+                                      (+ (- max-y y2)
+                                         (- max-x x2))))))))]
+    (.add Q (->QueueElement 0 [source]))
+    (loop []
+      #_(java.lang.Thread/sleep 10)
+      (let [u (.remove Q)]
+        #_#_(println u)
+        (Thread/sleep 100)
+        (if (= (first (:path u)) target)
           u
-          (let [Q (disj Q u)
-
-                heat-loss (first u)
-                pos (second u)
-                path-here (when (<= 3 (count pos))
-                            (->> (take 4 pos)
-                                 (partition 2 1)
-                                 (map #(direction (second %) (first %)))))
+          (let [heat-loss (:heat u)
+                pos (:path u)
+                path-here (->> (take 4 pos)
+                               (remove nil?)
+                               (partition 2 1)
+                               (map #(direction (second %) (first %))))
                 speed-limit (and (= (count path-here) 3)
                                  (= (count (set path-here)) 1))
-                #_#__ (when speed-limit (println "limiting speed" path-here (set path-here)))
                 dir (when path-here
                       (first path-here))
                 possible-directions (->> (dirs dir)
@@ -108,13 +119,12 @@
                                                     (not= % dir)
                                                     %))
                                          (filter #(may-move? m (first pos) %)))
-                neighbours (map #(% (first pos)) possible-directions)
-                Q (into Q
-                        (map (fn [v] [(+ heat-loss
-                                         (get-in m v))
-                                      (cons v pos)]))
-                        neighbours)]
-            (recur Q)))))))
+                neighbours (->> possible-directions
+                                (map #(% (first pos)))
+                                (remove (fn [p] (some #(= p %) pos))))]
+            (doseq [v neighbours]
+              (.add Q (->QueueElement (+ heat-loss (get-in m v)) (cons v pos))))
+            (recur)))))))
 
 ;; I think this needs a more efficient priority queue
 (def result (djikstra (parse-input sample-input)))
