@@ -88,7 +88,7 @@
               sent-pulse (if (= memory :off) :high :low)]
           [(-> network
                (assoc-in [pulse-target :memory] (if (= memory :off) :on :off))
-               (update-in [pulse-target :pulses] conj [tick sent-pulse]))
+               #_(update-in [pulse-target :pulses] conj [tick sent-pulse]))
            (map #(vector pulse-target % sent-pulse) outputs)]))
 
       conjunction
@@ -98,7 +98,7 @@
                          :low :high)]
         [(-> network
              (assoc-in [pulse-target :memory] memory)
-             (update-in [pulse-target :pulses] conj [tick sent-pulse]))
+             #_(update-in [pulse-target :pulses] conj [tick sent-pulse]))
          (map #(vector pulse-target % sent-pulse) outputs)])
 
       output
@@ -179,7 +179,7 @@
                (inc c)
                (:tick network))))))
 
-(press-button-until-rx-low puzzle-input)
+#_(press-button-until-rx-low puzzle-input)
 
 ;; too slow. The network can be traversed backwards by sending a single low pulse from rx backwards I think.
 
@@ -268,24 +268,38 @@
  (let [network (input->network sample-input-2)
        dream-state (find-dream-state network "output")]
    (-> dream-state
-       (assoc "output" {:module-type "output" :low 0 :high 0}))))
+       (assoc "output" {:module-type "output" :low 0 :high 0}))) 0)
 
 (def target-state (find-dream-state puzzle-network "rx"))
 
 (let [network target-state]
   (-> network
       (assoc "rx" {:module-type "rx" :low 0 :high 0})
-      (press-important-button)))
+      (press-important-button 0)))
 
 ;; okay, but all the conjunction nodes could've gotten their memories set on an earlier position of the flip-flops
 
+
+(defn periods-done? [network]
+  (->> (dissoc network broadcaster "output" "rx" :tick)
+       vals
+       (every? #(loop [pulses (:pulses %)
+                       high false
+                       low false]
+                  (if (and high low) true
+                      (if (empty? pulses)
+                        false
+                        (recur (rest pulses)
+                               (or high (= :high (second (first pulses))))
+                               (or low (= :low (second (first pulses)))))))))))
 
 (defn repeatedly-press-button-to-analyze-periods [input times]
   (loop [network (input->network input)
          processed-pulses {:low 0 :high 0}
          c 0
-         tick 0]
-    (if (>= c times)
+         tick 0M]
+    (if (or (periods-done? network)
+            (>= c times))
       network
       (let [[network' processed-pulses']
             (press-important-button network (or (:tick network) tick))]
@@ -294,7 +308,15 @@
                (inc c)
                (:tick network))))))
 
-(def periods (repeatedly-press-button-to-analyze-periods puzzle-input 10000))
+(def periods (repeatedly-press-button-to-analyze-periods puzzle-input 100000))
+
+(periods-done? periods)
+
+(periods "ll")
+(:tick periods)
+
+(dissoc periods broadcaster "output" "rx")
+758741M
 
 (->> periods
      (filter #(nil? (:pulses (second %)))))
@@ -305,3 +327,62 @@
      (map count))
 
 (keys periods)
+
+(puzzle-network broadcaster)
+
+(def lp-broadcaster (assoc-in puzzle-network [broadcaster :outputs] ["lp"]))
+
+(def fn-broadcaster (assoc-in puzzle-network [broadcaster :outputs] ["fn"]))
+
+(press-important-button lp-broadcaster 0)
+
+(press-important-button fn-broadcaster 0)
+
+(def pared-down-network (-> puzzle-network
+                            (assoc-in [broadcaster :outputs] ["lp"])
+                            (assoc-in ["ll" :memory] {"vb" :low})))
+
+(defn try-network [network]
+  (loop [network network
+         c 0
+         tick 0M]
+    (if (or (>= (get-in network ["rx" :low]) 1) (> c 10000))
+      [c network]
+      (let [[network' _processed-pulses']
+            (press-important-button network (or (:tick network) tick))]
+        (recur network'
+               (inc c)
+               (:tick network))))))
+
+(try-network pared-down-network) ; 3793
+
+(try-network (-> pared-down-network
+                 (assoc-in [broadcaster :outputs] ["tp"])
+                 (assoc-in ["ll" :memory] {"kv" :low}))) ; 4013
+
+(try-network (-> pared-down-network
+                 (assoc-in [broadcaster :outputs] ["zz"])
+                 (assoc-in ["ll" :memory] {"kl" :low}))) ; 3917
+
+(try-network (-> pared-down-network
+                 (assoc-in [broadcaster :outputs] ["fn"])
+                 (assoc-in ["ll" :memory] {"vm" :low}))); 4051
+
+
+(defn gcd [a b]
+  (loop [a a
+         b b]
+    (if (zero? (mod (max a b) (min a b)))
+      (min a b)
+      (recur (min a b) (mod (max a b) (min a b))))))
+
+(defn lcm [a b]
+  (/ (* a b)
+     (gcd a b)))
+
+(defn least-common-multiple [xs]
+  (reduce lcm xs))
+
+
+
+(least-common-multiple [3793 4013 3917 4051]) ; 241 528 184 647 003
