@@ -68,7 +68,7 @@
   (-> (parse-input input)
       setup-network))
 
-(defn process-pulse [network pulse-source pulse-target low-high]
+(defn process-pulse [network tick pulse-source pulse-target low-high]
   ;; (println pulse-source pulse-target low-high)
   (let [module (network pulse-target)
         outputs (:outputs module)]
@@ -82,16 +82,22 @@
         [network]
 
         (= :low low-high)
-        (let [memory (:memory module)]
-          [(assoc-in network [pulse-target :memory] (if (= memory :off) :on :off))
-           (map #(vector pulse-target % (if (= memory :off) :high :low)) outputs)]))
+        (let [memory (:memory module)
+              sent-pulse (if (= memory :off) :high :low)]
+          [(-> network
+               (assoc-in [pulse-target :memory] (if (= memory :off) :on :off))
+               (update-in [pulse-target :pulses] conj [tick sent-pulse]))
+           (map #(vector pulse-target % sent-pulse) outputs)]))
 
       conjunction
       (let [memory (-> (:memory module)
-                       (assoc pulse-source low-high))]
-        [(assoc-in network [pulse-target :memory] memory)
-         (map #(vector pulse-target % (if (every? (partial = :high) (vals memory))
-                                        :low :high)) outputs)])
+                       (assoc pulse-source low-high))
+            sent-pulse (if (every? (partial = :high) (vals memory))
+                         :low :high)]
+        [(-> network
+             (assoc-in [pulse-target :memory] memory)
+             (update-in [pulse-target :pulses] conj [tick sent-pulse]))
+         (map #(vector pulse-target % sent-pulse) outputs)])
 
       output
       [(update-in network [pulse-target low-high] inc)]
@@ -102,18 +108,19 @@
       ;; Default
       [network])))
 
-(process-pulse sample-network :headquarters "broadcaster" :low)
+(process-pulse sample-network 1 :headquarters "broadcaster" :low)
 
-(defn press-important-button [network]
+(defn press-important-button [network tick]
   (let [initial-pulse  [:headquarters "broadcaster" :low]]
     (loop [processed-pulses {:low 0 :high 0}
            pulses [initial-pulse]
-           network network]
+           network network
+           tick tick]
       (if (empty? pulses)
-        [network processed-pulses]
+        [(assoc network :tick tick) processed-pulses]
         (let [[updated-network new-pulses]
               (reduce (fn [[network pulses] pulse]
-                        (let [[network' new-pulses] (apply (partial process-pulse network) pulse)]
+                        (let [[network' new-pulses] (apply (partial process-pulse network tick) pulse)]
                           [network' (into pulses new-pulses)]))
                       [network []]
                       pulses)]
@@ -123,9 +130,10 @@
                    processed-pulses
                    pulses)
            new-pulses
-           updated-network))))))
+           updated-network
+           (inc tick)))))))
 
-(press-important-button sample-network)
+(press-important-button sample-network 0)
 
 (defn repeatedly-press-button [input times]
   (loop [network (input->network input)
@@ -134,7 +142,7 @@
     (if (>= c times)
       processed-pulses
       (let [[network' processed-pulses']
-            (press-important-button network)]
+            (press-important-button network 0)]
         (recur network'
                (merge-with + processed-pulses processed-pulses')
                (inc c))))))
@@ -156,6 +164,21 @@
 
 (def puzzle-network (input->network puzzle-input))
 
+;; Naive implementation
+(defn press-button-until-rx-low [input]
+  (loop [network (input->network input)
+         c 0]
+    (if (>= (get-in network ["rx" :low]) 1)
+      c
+      (let [[network' _processed-pulses']
+            (press-important-button network)]
+        (recur network'
+               (inc c))))))
+
+#_(press-button-until-rx-low puzzle-input)
+
+;; too slow. The network can be traversed backwards by sending a single low pulse from rx backwards I think.
+
 (def module-preceding-rx ;; Is a conjunction node in my case
   (->> puzzle-network
        (some #(when (contains? (set (:outputs (second %))) "rx")
@@ -172,6 +195,11 @@
   ["kl" {:module-type \&, :outputs ["ll"], :memory {"ff" :low}}]
   ["vb" {:module-type \&, :outputs ["ll"], :memory {"tj" :low}}]
   ["vm" {:module-type \&, :outputs ["ll"], :memory {"th" :low}}])
+
+
+(defn backtrack-connecting-modules [network module-id]
+  (filter #(when (contains? (set (:outputs (second %))) module-id)
+             %) network))
 
 (backtrack-connecting-modules puzzle-network "hb")
 
@@ -203,10 +231,6 @@
   ["tp" {:module-type \%, :outputs ["hb" "sv"], :memory :off}])
 
 ;; making loops, this won't work like this
-
-(defn backtrack-connecting-modules [network module-id]
-  (filter #(when (contains? (set (:outputs (second %))) module-id)
-             %) network))
 
 (defn find-dream-state [network target-module]
   (loop [network-state {}
@@ -251,16 +275,19 @@
 
 ;; okay, but all the conjunction nodes could've gotten their memories set on an earlier position of the flip-flops
 
-(defn press-button-until-rx-low [input]
+
+(defn repeatedly-press-button-to-analyze-periods [input times]
   (loop [network (input->network input)
-         c 0]
-    (if (>= (get-in network ["rx" :low]) 1)
-      c
-      (let [[network' _processed-pulses']
-            (press-important-button network)]
+         processed-pulses {:low 0 :high 0}
+         c 0
+         tick 0]
+    (if (>= c times)
+      network
+      (let [[network' processed-pulses']
+            (press-important-button network (or (:tick network) tick))]
         (recur network'
-               (inc c))))))
+               (merge-with + processed-pulses processed-pulses')
+               (inc c)
+               (:tick network))))))
 
-(press-button-until-rx-low puzzle-input)
-
-;; too slow. The network can be traversed backwards by sending a single low pulse from rx backwards I think.
+(repeatedly-press-button-to-analyze-periods puzzle-input 1000)
