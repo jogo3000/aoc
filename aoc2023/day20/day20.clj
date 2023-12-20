@@ -210,6 +210,7 @@
 
 (defn find-dream-state [network target-module]
   (loop [network-state {}
+         visited-modules #{}
          preceding-modules
          (backtrack-connecting-modules network target-module)]
     (if (empty? preceding-modules)
@@ -227,8 +228,13 @@
                       conjunction
                       [id (update module :memory #(update-vals % (constantly :high)))])))
              preceding-modules)
-       (mapcat (partial backtrack-connecting-modules network)
-               (map first preceding-modules))))))
+       (into visited-modules (keys preceding-modules))
+       (->> preceding-modules
+            (map first)
+            (remove visited-modules)
+            (mapcat (partial backtrack-connecting-modules network)))))))
+
+(find-dream-state (input->network sample-input-2) "output")
 
 (press-important-button
  (let [network (input->network sample-input-2)
@@ -237,6 +243,13 @@
        (assoc "output" {:module-type "output" :low 0 :high 0}))))
 
 (def target-state (find-dream-state puzzle-network "rx"))
+
+(let [network target-state]
+  (-> network
+      (assoc "rx" {:module-type "rx" :low 0 :high 0})
+      (press-important-button)))
+
+;; okay, but all the conjunction nodes could've gotten their memories set on an earlier position of the flip-flops
 
 (defn press-button-until-rx-low [input]
   (loop [network (input->network input)
