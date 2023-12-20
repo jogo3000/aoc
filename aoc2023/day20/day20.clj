@@ -152,6 +152,92 @@
 
 ;; part deux
 
+;; Find out what configuration is needed
+
+(def puzzle-network (input->network puzzle-input))
+
+(def module-preceding-rx ;; Is a conjunction node in my case
+  (->> puzzle-network
+       (some #(when (contains? (set (:outputs (second %))) "rx")
+                %))))
+
+;; The node sends a low pulse when all connecting nodes have sent a high pulse
+
+;; Backtrack to find next nodes
+(->> (:memory (second module-preceding-rx))
+     keys
+     (map (juxt identity puzzle-network)))
+
+'(["kv" {:module-type \&, :outputs ["ll"], :memory {"hb" :low}}]
+  ["kl" {:module-type \&, :outputs ["ll"], :memory {"ff" :low}}]
+  ["vb" {:module-type \&, :outputs ["ll"], :memory {"tj" :low}}]
+  ["vm" {:module-type \&, :outputs ["ll"], :memory {"th" :low}}])
+
+(backtrack-connecting-modules puzzle-network "hb")
+
+'(["xp" {:module-type \%, :outputs ["hb" "xf"], :memory :off}]
+  ["fx" {:module-type \%, :outputs ["rl" "hb"], :memory :off}]
+  ["rl" {:module-type \%, :outputs ["hb"], :memory :off}]
+  ["ch" {:module-type \%, :outputs ["hb" "mv"], :memory :off}]
+  ["mv" {:module-type \%, :outputs ["hb" "mx"], :memory :off}]
+  ["dx" {:module-type \%, :outputs ["hb" "fx"], :memory :off}]
+  ["fz" {:module-type \%, :outputs ["hb" "dx"], :memory :off}]
+  ["km" {:module-type \%, :outputs ["fz" "hb"], :memory :off}]
+  ["tp" {:module-type \%, :outputs ["hb" "sv"], :memory :off}])
+
+(backtrack-connecting-modules puzzle-network "xp")
+'(["mx" {:module-type \%, :outputs ["xp"], :memory :off}])
+
+(backtrack-connecting-modules puzzle-network "mx")
+'(["mv" {:module-type \%, :outputs ["hb" "mx"], :memory :off}]
+  ["hb" {:module-type \&, :outputs ["sv" "xf" "kv" "tp" "mx"], :memory {"xp" :low, "fx" :low, "rl" :low, "ch" :low, "mv" :low, "dx" :low, "fz" :low, "km" :low, "tp" :low}}])
+
+(backtrack-connecting-modules puzzle-network "mv")
+'(["ch" {:module-type \%, :outputs ["hb" "mv"], :memory :off}])
+
+(backtrack-connecting-modules puzzle-network "ch")
+'(["sv" {:module-type \%, :outputs ["ch"], :memory :off}])
+
+(backtrack-connecting-modules puzzle-network "sv")
+'(["hb" {:module-type \&, :outputs ["sv" "xf" "kv" "tp" "mx"], :memory {"xp" :low, "fx" :low, "rl" :low, "ch" :low, "mv" :low, "dx" :low, "fz" :low, "km" :low, "tp" :low}}]
+  ["tp" {:module-type \%, :outputs ["hb" "sv"], :memory :off}])
+
+;; making loops, this won't work like this
+
+(defn backtrack-connecting-modules [network module-id]
+  (filter #(when (contains? (set (:outputs (second %))) module-id)
+             %) network))
+
+(defn find-dream-state [network target-module]
+  (loop [network-state {}
+         preceding-modules
+         (backtrack-connecting-modules network target-module)]
+    (if (empty? preceding-modules)
+      network-state
+      (recur
+       (into network-state
+             (map (fn [[id module]]
+                    (condp = (:module-type module)
+                      broadcaster
+                      [id module]
+
+                      flip-flop
+                      [id (assoc module :memory :off)]
+
+                      conjunction
+                      [id (update module :memory #(update-vals % (constantly :high)))])))
+             preceding-modules)
+       (mapcat (partial backtrack-connecting-modules network)
+               (map first preceding-modules))))))
+
+(press-important-button
+ (let [network (input->network sample-input-2)
+       dream-state (find-dream-state network "output")]
+   (-> dream-state
+       (assoc "output" {:module-type "output" :low 0 :high 0}))))
+
+(def target-state (find-dream-state puzzle-network "rx"))
+
 (defn press-button-until-rx-low [input]
   (loop [network (input->network input)
          c 0]
