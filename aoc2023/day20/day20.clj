@@ -58,7 +58,8 @@
                     (connect-conjunction-modules module-name module)))
               network
               network)
-      (assoc "output" {:module-type "output" :low 0 :high 0})))
+      (assoc "output" {:module-type "output" :low 0 :high 0})
+      (assoc "rx" {:module-type "rx" :low 0 :high 0})))
 
 (def sample-network (-> (parse-input sample-input)
                         setup-network))
@@ -95,6 +96,10 @@
       output
       [(update-in network [pulse-target low-high] inc)]
 
+      "rx"
+      [(update-in network [pulse-target low-high] inc)]
+
+      ;; Default
       [network])))
 
 (process-pulse sample-network :headquarters "broadcaster" :low)
@@ -143,3 +148,20 @@
 (repeatedly-press-button puzzle-input 1000)
 {:low 17194, :high 43218}
 ; (* 17194 43218) 743090292
+
+
+;; part deux
+
+(defn press-button-until-rx-low [input]
+  (loop [network (input->network input)
+         c 0]
+    (if (>= (get-in network ["rx" :low]) 1)
+      c
+      (let [[network' _processed-pulses']
+            (press-important-button network)]
+        (recur network'
+               (inc c))))))
+
+(press-button-until-rx-low puzzle-input)
+
+;; too slow. The network can be traversed backwards by sending a single low pulse from rx backwards I think.
