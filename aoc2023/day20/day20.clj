@@ -1,6 +1,8 @@
 (ns day20
   (:require [clojure.string :as str]))
 
+(set! *warn-on-reflection* true)
+
 (def puzzle-input (str/trim (slurp "day20/input.txt")))
 
 (def sample-input "broadcaster -> a, b, c
@@ -167,15 +169,17 @@
 ;; Naive implementation
 (defn press-button-until-rx-low [input]
   (loop [network (input->network input)
-         c 0]
+         c 0
+         tick 0]
     (if (>= (get-in network ["rx" :low]) 1)
       c
       (let [[network' _processed-pulses']
-            (press-important-button network)]
+            (press-important-button network (or (:tick network) tick))]
         (recur network'
-               (inc c))))))
+               (inc c)
+               (:tick network))))))
 
-#_(press-button-until-rx-low puzzle-input)
+(press-button-until-rx-low puzzle-input)
 
 ;; too slow. The network can be traversed backwards by sending a single low pulse from rx backwards I think.
 
@@ -290,4 +294,14 @@
                (inc c)
                (:tick network))))))
 
-(repeatedly-press-button-to-analyze-periods puzzle-input 1000)
+(def periods (repeatedly-press-button-to-analyze-periods puzzle-input 10000))
+
+(->> periods
+     (filter #(nil? (:pulses (second %)))))
+
+(->> periods
+     (map second)
+     (map :pulses)
+     (map count))
+
+(keys periods)
