@@ -205,16 +205,17 @@
 
 (def steps-sample (count-steps-to-visit-all sample-input))
 
-(let [m (parse-input sample-input)
+(let [n 20
+      m (parse-input sample-input)
       steps
-      (count-possible-steps2 sample-input 20)]
+      (count-possible-steps2 sample-input n)]
   (println "---- visualization -----")
   (println
    (str/join
     "\n"
-    (for [y (range -30 30)]
+    (for [y (range (- n) (+ n 10))]
       (str/join
-       (for [x (range -30 30)]
+       (for [x (range (- n) (+ n 10))]
          (if (steps [y x])
            \O
            (wrapped-get m (count m) (count (first m)) [y x]))))))))
