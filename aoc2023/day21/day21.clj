@@ -44,19 +44,28 @@
 
 (defn count-possible-steps [input steps]
   (let [m (parse-input input)
-        starting-position (find-starting-position m)
-        height (count m)
-        width (count (first m))]
+        starting-position (find-starting-position m)]
     (->> (range steps)
-         (reduce (fn [queue _]
-                   (mapcat identity
-                    (for [spot queue]
-                      (let [allowed-positions
-                            (keep (partial may-move? m spot) [north south east west])]
-                        allowed-positions))))
-                 [starting-position]))))
+         (reduce (fn [{:keys [queue visited]} _]
+                   (let [new-spots
+                         (set
+                          (mapcat identity
+                                  (for [spot queue]
+                                    (let [allowed-positions
+                                          (keep (partial may-move? m spot) [north south east west])]
+                                      allowed-positions))))]
+                     {:queue (remove #(contains? visited %) new-spots)
+                      :visited (into (update-vals visited not)
+                                     (map (juxt identity (constantly true)))
+                                     new-spots)}))
+                 {:queue [starting-position]
+                  :visited {starting-position true}})
+         :visited
+         (filter second)
+         (map first)
+         (into #{}))))
 
-(count-possible-steps sample-input 2)
+(count (count-possible-steps sample-input 6))
 
 (defn visualize [m steps]
   (let [steps (set steps)]
@@ -71,7 +80,14 @@
              \O
              (get-in m [y x])))))))))
 
+
 (let [m (parse-input sample-input)]
   (visualize m (count-possible-steps sample-input 2)))
 
-#_(count (count-possible-steps puzzle-input 64))
+(let [m (parse-input sample-input)]
+  (doseq [n (range 10)]
+    (visualize m (count-possible-steps sample-input n))))
+
+#_(count (count-possible-steps puzzle-input 64)); 3776 - This works
+
+;; Part deux
