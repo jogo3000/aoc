@@ -1,7 +1,10 @@
-(require '[clojure.string :as str])
+(ns day1
+  (:require [clojure.string :as str]))
 
 
-(defn process-line [s]
+(defn process-line
+  "Find digits and stick first and last together"
+  [s]
   (->> s
        (filter #(Character/isDigit %))
        ((fn [ds]
@@ -12,6 +15,7 @@
  (str/split-lines)
  (map process-line)
  (reduce +))
+
 ;; Part 2
 
 (def digits
