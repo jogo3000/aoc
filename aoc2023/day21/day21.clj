@@ -97,7 +97,9 @@
 
 ;; Part deux
 
-(def target-steps 26501365)
+(def target-steps 26501365) (/ 26501365 130.0)
+(mod (- target-steps 65) 130)
+
 (+ 26501365 26501365 26501365 26501365) ; 106 005 460 Something much more manageable
 (* target-steps target-steps);; ->  702 322 346 863 225  search area too large to hold in memory
 
@@ -200,7 +202,7 @@
 (* (count parsed-puzzle)
    (count (first parsed-puzzle))) ; 17161
 
-
+(count parsed-puzzle)
 
 
 (def steps-sample (count-steps-to-visit-all sample-input))
@@ -219,3 +221,44 @@
          (if (steps [y x])
            \O
            (wrapped-get m (count m) (count (first m)) [y x]))))))))
+
+
+(let [n 200
+      m (parse-input puzzle-input)
+      steps
+      (count-possible-steps2 puzzle-input n)]
+  (println "---- visualization -----")
+  (println
+   (str/join
+    "\n"
+    (for [y (range (- n) (+ n 10))]
+      (str/join
+       (for [x (range (- n) (+ n 10))]
+         (if (steps [y x])
+           \O
+           (wrapped-get m (count m) (count (first m)) [y x]))))))))
+
+(let [n 7
+      sample-input ".....\n.....\n..S..\n.....\n....."
+      m (parse-input sample-input)
+      steps
+      (count-possible-steps2 sample-input n)]
+  (println "---- visualization -----")
+  (println
+   (str/join
+    "\n"
+    (for [y (range (- n) (+ n 10))]
+      (str/join
+       (for [x (range (- n) (+ n 10))]
+         (if (steps [y x])
+           \O
+           (wrapped-get m (count m) (count (first m)) [y x]))))))))
+
+
+(apply + (map #(* 4 %) (range 7 0 -2))) 64
+
+(apply + (map #(* 4 %) (range 5 0 -2))) 36
+
+(apply + (map #(* 4 %) (range 5000 0 -2))) 25010000
+
+(apply + (map #(* 4 %) (range target-steps 0 -2))) ;; without rocks 702 322 399 865 956
