@@ -279,7 +279,7 @@
 ;; distance traveled east is 202300 maps
 ;; distance traveled north is 202300 maps
 ;; distance traveled south is 202300 maps
-;; 1 map for the tips of the corners
+;;
 ;;
 
 
@@ -303,8 +303,8 @@
 
 (defn remove-top-left [places]
   (->> places
-       (filter (fn [[[y x] _]]
-                 (>= x (- 65 y))))))
+       (remove (fn [[[y x] _]]
+                 (< x (- 65 y))))))
 
 (visualize parsed-puzzle
            (->> (remove-top-left (second steps-all))
@@ -342,7 +342,10 @@
                 (map first)
                 (into #{})))
 
-
+(defn only-top-right [places]
+  (->> places
+       (remove (fn [[[y x] _]]
+                 (<= x (- 130 (- 65 y)))))))
 
 (println
  (str/join "\n"
@@ -366,6 +369,11 @@
 (defn remove-bottom-left [places]
   (->> places
        (filter (fn [[[y x] _]]
+                 (>= x (- y 65))))))
+
+(defn only-bottom-left [places]
+  (->> places
+       (remove (fn [[[y x] _]]
                  (>= x (- y 65))))))
 
 (visualize parsed-puzzle
@@ -398,8 +406,13 @@
        (filter (fn [[[y x] _]]
                  (<= x (- 130 (- y 65)))))))
 
+(defn only-bottom-right [places]
+  (->> places
+       (remove (fn [[[y x] _]]
+                 (<= x (- 130 (- y 65)))))))
+
 (visualize parsed-puzzle
-           (->> (remove-bottom-right (second steps-all))
+           (->> (only-bottom-right (second steps-all))
                 (filter second)
                 (map first)
                 (into #{})))
@@ -448,3 +461,225 @@
                 (filter second)
                 (map first)
                 (into #{})))
+
+(def left-tip (->> (second steps-all)
+                   (remove-bottom-left)
+                   (remove-top-left)
+                   (filter second)
+                   (map first)
+                   (into #{})
+                   count
+                   ;inc "on", so middle position unvisited
+                   ))
+
+(def right-tip (->> (second steps-all)
+                    (remove-bottom-right)
+                    (remove-top-right)
+                    (filter second)
+                    (map first)
+                    (into #{})
+                    count
+                    ;; inc "on", so middle position unvisited
+                    ))
+
+(def bottom-tip
+  (->> (second steps-all)
+       (remove-bottom-right)
+       (remove-bottom-left)
+       (filter second)
+       (map first)
+       (into #{})
+       count ;inc
+       ))
+
+(def top-tip
+  (->> (second steps-all)
+       (remove-top-right)
+       (remove-top-left)
+       (filter second)
+       (map first)
+       (into #{})
+       count ;inc
+       ))
+
+(def only-bottom-left-off
+  (->> (second steps-all)
+       (only-bottom-left)
+       (filter (complement second))
+       (map first)
+       (into #{})
+       count))
+
+(def only-bottom-right-off
+  (->> (second steps-all)
+       (only-bottom-right)
+       (filter (complement second))
+       (map first)
+       (into #{})
+       count))
+
+(def only-top-right-off
+  (->> (second steps-all)
+       (only-top-right)
+       (filter (complement second))
+       (map first)
+       (into #{})
+       count))
+
+(def only-top-left-off
+  (->> (second steps-all)
+       (only-top-left)
+       (filter (complement second))
+       (map first)
+       (into #{})
+       count))
+
+
+(def top-right-removed-on
+  (->> (second steps-all)
+       (remove-top-right)
+       (filter second)
+       (map first)
+       (into #{})
+       count ; inc
+       ))
+
+(def bottom-right-removed-on
+  (->> (second steps-all)
+       (remove-bottom-right)
+       (filter second)
+       (map first)
+       (into #{})
+       count ; inc
+       ))
+
+(def top-left-removed-on
+  (->> (second steps-all)
+       (remove-top-left)
+       (filter second)
+       (map first)
+       (into #{})
+       count ; inc
+       ))
+
+(def bottom-left-removed-on
+  (->> (second steps-all)
+       (remove-bottom-left)
+       (filter second)
+       (map first)
+       (into #{})
+       count ; inc
+       ))
+
+(def count-all-steps-on-position
+  (->> (second steps-all)
+       (filter second)
+       (map first)
+       (into #{})
+       count ; inc
+       ))
+
+(def count-all-steps-off-position
+  (->> (second steps-all)
+       (filter (complement second))
+       (map first)
+       (into #{})
+       count ; inc
+       ))
+
+(visualize parsed-puzzle
+           (->> (second steps-all)
+                (remove-bottom-right)
+                (filter second)
+                (map first)
+                (into #{})))
+
+;; To be clear, first map is on and because the amount traveled right is
+;; even (202300), the last is "on" too
+
+;; Same goes for the top and bottom tips
+
+;; AND that means that there are (- 202300 1) = 202299 full maps to all
+;; directions. One "off" map in both ends makes (/ (- 202299 1) 2) = 101149
+;; full "on" and 101150 "off" maps (+ 101149 101150 1) => 202300 matches
+
+;; Because the amount of steps 26501365 is odd, the "on" map is the one with the
+;; starting position unvisited
+
+(+ ;; starting map 1 "on" in the middle
+ count-all-steps-on-position
+ ;; right hand side 202300 maps right to the center, with 1 as the tip
+ (* 101149 count-all-steps-on-position) (* 101150 count-all-steps-off-position) right-tip
+ ;; right to top
+ ;; Starting with 1 "on", final two maps are remove top right "on", only bottom left "off"
+ ;; so amount of maps lessens by two each round until we reach the position its only the two and then one
+ ;; (- 202300 2) 202298 which means half are "on" half are "off"
+ (loop [steps 0
+        to-go (- 202300 2)]
+   (if (> to-go 2)
+     (recur (+ steps
+               (* (/ to-go 2) count-all-steps-on-position)
+               (* (/ to-go 2) count-all-steps-off-position)
+               top-right-removed-on
+               only-bottom-left-off)
+            (- to-go 2))
+
+     ;; right to top remaining three maps
+     (+ steps only-bottom-left-off top-right-removed-on only-bottom-left-off)))
+
+ ;; top pillar is the same as right hand side but tip is different
+ (* 101149 count-all-steps-on-position) (* 101150 count-all-steps-off-position) top-tip
+
+ ;; left to top
+ ;; Here the final ones are 1 only-bottom-right "off", 1 remove top left "on"
+ (loop [steps 0
+        to-go (- 202300 2)]
+   (if (> to-go 2)
+     (recur (+ steps
+               (* (/ to-go 2) count-all-steps-on-position)
+               (* (/ to-go 2) count-all-steps-off-position)
+               top-left-removed-on
+               only-bottom-right-off)
+            (- to-go 2))
+
+     ;; right to top remaining three maps
+     (+ steps only-bottom-right-off top-left-removed-on only-bottom-right-off)))
+
+ ;; left to bottom
+ ;; Here final ones are only-top-right "off", remove-bottom-left "on"
+ (loop [steps 0
+        to-go (- 202300 2)]
+   (if (> to-go 2)
+     (recur (+ steps
+               (* (/ to-go 2) count-all-steps-on-position)
+               (* (/ to-go 2) count-all-steps-off-position)
+               bottom-left-removed-on
+               only-top-right-off)
+            (- to-go 2))
+
+     ;; right to top remaining three maps
+     (+ steps only-top-right-off bottom-left-removed-on only-top-right-off)))
+
+ ;; right to bottom
+ ;; rightmost two are now remove bottom right "on" and only-top-left "off"
+ (loop [steps 0
+        to-go (- 202300 2)]
+   (if (> to-go 2)
+     (recur (+ steps
+               (* (/ to-go 2) count-all-steps-on-position)
+               (* (/ to-go 2) count-all-steps-off-position)
+               bottom-right-removed-on
+               only-top-left-off)
+            (- to-go 2))
+
+     ;; right to top remaining three maps
+     (+ steps only-top-left-off bottom-right-removed-on only-top-left-off)))
+
+ ;; bottom pillar
+ (* 101149 count-all-steps-on-position) (* 101150 count-all-steps-off-position) bottom-tip
+ )
+
+;; 2529568353980941 Still too high
+
+
+;; 2529609279877830 is too high
