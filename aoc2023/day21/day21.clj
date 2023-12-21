@@ -97,11 +97,11 @@
 
 ;; Part deux
 
-(def target-steps 26501365) (/ 26501365 130.0)
-(mod (- target-steps 65) 130)
+(def target-steps 26501365)
+(quot target-steps 130) ; 203856 full screens wide
 
-(+ 26501365 26501365 26501365 26501365) ; 106 005 460 Something much more manageable
 (* target-steps target-steps);; ->  702 322 346 863 225  search area too large to hold in memory
+(+ 26501365 26501365 26501365 26501365) ; 106 005 460 Something much more manageable
 
 (defn wrapped-get [m height width [y x]]
   (let [mod-y (mod y height)
@@ -179,30 +179,35 @@
 
 (def parsed-puzzle (parse-input puzzle-input))
 
-(->> (second steps-all)
-     (filter second) ;; Näistä lukemista pitää poistaa ruudukon ulkopuolelle jäävä kama
-     (map first)
-     (filter (partial inside-map? (dec (count parsed-puzzle))
-                      (dec (count (first parsed-puzzle)))))
-     count); 7597
+(def steps-on-on-map
+  (->> (second steps-all)
+       (filter second)
+       (map first)
+       (filter (partial inside-map? (dec (count parsed-puzzle))
+                        (dec (count (first parsed-puzzle)))))
+       count))                             ; 7597
 
-(->> (second steps-all)
-     (filter (complement second))
-     (map first)
-     (filter (partial inside-map? (dec (count parsed-puzzle))
-                      (dec (count (first parsed-puzzle)))))
-     count); 7689
+(def steps-on-off-map
+  (->> (second steps-all)
+       (filter (complement second))
+       (map first)
+       (filter (partial inside-map? (dec (count parsed-puzzle))
+                        (dec (count (first parsed-puzzle)))))
+       count))                             ; 7689
 
-(count
- (for [y (range (count parsed-puzzle))
-       x (range (count (first parsed-puzzle)))
-       :when (= rock (get-in parsed-puzzle [y x]))]
-   [y x])) ; 1870
+(def stones-whole-map
+  (count
+   (for [y (range (count parsed-puzzle))
+         x (range (count (first parsed-puzzle)))
+         :when (= rock (get-in parsed-puzzle [y x]))]
+     [y x]))) ; 1870
 
 (* (count parsed-puzzle)
    (count (first parsed-puzzle))) ; 17161
 
 (count parsed-puzzle)
+
+
 
 
 (def steps-sample (count-steps-to-visit-all sample-input))
@@ -261,4 +266,185 @@
 
 (apply + (map #(* 4 %) (range 5000 0 -2))) 25010000
 
-(apply + (map #(* 4 %) (range target-steps 0 -2))) ;; without rocks 702 322 399 865 956
+(apply + (map #(* 4 %) (range target-steps 0 -2))) ;; without rocks removed count is 702 322 399 865 956
+
+(quot target-steps (count parsed-puzzle)) (* 202300 202300) ; 40 925 290 000 <- still way too many whole maps to go through
+(rem target-steps (count parsed-puzzle)) ; 65 <- exactly half of the puzzle!
+
+;; This means the walk ends to the edge of the puzzle. I can see there is a clearance area that can be walked
+
+;; The map can be divided into a central area, the nw, ne, sw and se quadrants
+
+;; This means the distance traveled west is 202300 maps
+;; distance traveled east is 202300 maps
+;; distance traveled north is 202300 maps
+;; distance traveled south is 202300 maps
+;; 1 map for the tips of the corners
+;;
+
+
+;; Ok middle row is 202300 maps of "on", 202300 maps of "off
+
+
+
+;; let's see how the quadrants look like
+
+;; top left quadrant
+(defn only-top-left [places]
+  (->> places
+       (filter (fn [[[y x] _]]
+                 (< x (- 65 y))))))
+
+(visualize parsed-puzzle
+           (->> (only-top-left (second steps-all))
+                (filter second)
+                (map first)
+                (into #{})))
+
+(defn remove-top-left [places]
+  (->> places
+       (filter (fn [[[y x] _]]
+                 (>= x (- 65 y))))))
+
+(visualize parsed-puzzle
+           (->> (remove-top-left (second steps-all))
+                (filter second)
+                (map first)
+                (into #{})))
+
+(println
+ (str/join "\n"
+           (for [y (range 131)]
+             (str/join
+              (for [x (range 131)]
+                (if (> x (- 65 y))
+                  \.
+                  (get-in parsed-puzzle [y x])))))))
+
+(def stones-top-left
+  (reduce +
+          (for [y (range 65)]
+            (reduce +
+                    (for [x (range 65)
+                          :when (and (< x (- 65 y))
+                                     (= rock (get-in parsed-puzzle [y x])))]
+                      1))))) ; 234
+
+;; top right quadrant
+(defn remove-top-right [places]
+  (->> places
+       (filter (fn [[[y x] _]]
+                 (<= x (- 130 (- 65 y)))))))
+
+(visualize parsed-puzzle
+           (->> (remove-top-right (second steps-all))
+                (filter second)
+                (map first)
+                (into #{})))
+
+
+
+(println
+ (str/join "\n"
+           (for [y (range 131)]
+             (str/join
+              (for [x (range 131)]
+                (if (< x (- 130 (- 65 y)))
+                  \.
+                  (get-in parsed-puzzle [y x])))))))
+
+(def stones-top-right
+  (reduce +
+          (for [y (range 131)]
+            (reduce +
+                    (for [x (range 131)
+                          :when (and  (>= x (- 130 (- 65 y)))
+                                      (= rock (get-in parsed-puzzle [y x])))]
+                      1))))) ; 231
+
+;; bottom left quadrant
+(defn remove-bottom-left [places]
+  (->> places
+       (filter (fn [[[y x] _]]
+                 (>= x (- y 65))))))
+
+(visualize parsed-puzzle
+           (->> (remove-bottom-left (second steps-all))
+                (filter second)
+                (map first)
+                (into #{})))
+
+(println
+ (str/join "\n"
+           (for [y (range 131)]
+             (str/join
+              (for [x (range 131)]
+                (if (>= x (- y 65))
+                  \.
+                  (get-in parsed-puzzle [y x])))))))
+
+(def stones-bottom-left
+  (reduce +
+          (for [y (range 131)]
+            (reduce +
+                    (for [x (range 131)
+                          :when (and (< x (- y 65))
+                                     (= rock (get-in parsed-puzzle [y x])))]
+                      1))))) ; 263
+
+;; bottom right quadrant
+(defn remove-bottom-right [places]
+  (->> places
+       (filter (fn [[[y x] _]]
+                 (<= x (- 130 (- y 65)))))))
+
+(visualize parsed-puzzle
+           (->> (remove-bottom-right (second steps-all))
+                (filter second)
+                (map first)
+                (into #{})))
+
+
+(println
+ (str/join "\n"
+           (for [y (range 131)]
+             (str/join
+              (for [x (range 131)]
+                (if (< x (- 130 (- y 65)))
+                  \.
+                  (get-in parsed-puzzle [y x])))))))
+
+
+(def stones-bottom-right
+  (reduce +
+          (for [y (range 131)]
+            (reduce +
+                    (for [x (range 131)
+                          :when (and
+                                 (> x (- 130 (- y 65)))
+                                 (= rock (get-in parsed-puzzle [y x])))]
+                      1))))) ; 224
+
+
+(def stones-middle (- stones-whole-map
+                      stones-top-right
+                      stones-top-left
+                      stones-bottom-right
+                      stones-bottom-left))
+
+(visualize parsed-puzzle
+           (->> (second steps-all)
+                (remove-bottom-left)
+                (remove-top-left)
+                (filter second)
+                (map first)
+                (into #{})))
+
+
+(visualize parsed-puzzle
+           (->> (second steps-all)
+                (remove-bottom-right)
+                (remove-top-right)
+                (filter second)
+                (map first)
+                (into #{})))
