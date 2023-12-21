@@ -91,3 +91,7 @@
 #_(count (count-possible-steps puzzle-input 64)); 3776 - This works
 
 ;; Part deux
+
+(def target-steps 26501365)
+
+(* target-steps target-steps);; ->  702 322 346 863 225  search area too large to hold in memory
