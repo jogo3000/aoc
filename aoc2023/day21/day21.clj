@@ -93,5 +93,12 @@
 ;; Part deux
 
 (def target-steps 26501365)
-
+(+ 26501365 26501365 26501365 26501365) ; 106 005 460 Something much more manageable
 (* target-steps target-steps);; ->  702 322 346 863 225  search area too large to hold in memory
+
+(defn may-move-wrap? [m height width pos dir]
+  (let [[y' x' :as pos'] (dir pos)
+        mod-y (mod y' height)
+        mod-x (mod x' width)]
+    (when (not= rock (get-in m [mod-y mod-x]))
+      pos')))
