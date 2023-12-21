@@ -48,23 +48,13 @@
         height (count m)
         width (count (first m))]
     (->> (range steps)
-         (reduce (fn [{:keys [visited queue may-reach?]} _]
-                   (let [moves
-                         (for [spot queue]
-                           (let [allowed-positions
-                                 (keep (partial may-move? m spot) [north south east west])]
-                             [spot allowed-positions]))
-                         new-visited
-                         (into visited (map first) moves)]
-
-                     {:visited new-visited
-                      :may-reach? (into may-reach? (mapcat second moves))
-                      :queue (->> moves
-                                  (mapcat second)
-                                  (remove new-visited))}))
-                 {:visited #{}
-                  :may-reach? #{}
-                  :queue #{starting-position}}))))
+         (reduce (fn [queue _]
+                   (mapcat identity
+                    (for [spot queue]
+                      (let [allowed-positions
+                            (keep (partial may-move? m spot) [north south east west])]
+                        allowed-positions))))
+                 [starting-position]))))
 
 (count-possible-steps sample-input 2)
 
@@ -82,4 +72,6 @@
              (get-in m [y x])))))))))
 
 (let [m (parse-input sample-input)]
-  (visualize m (:may-reach? (count-possible-steps sample-input 2))))
+  (visualize m (count-possible-steps sample-input 2)))
+
+#_(count (count-possible-steps puzzle-input 64))
