@@ -101,6 +101,11 @@
 (+ 26501365 26501365 26501365 26501365) ; 106 005 460 Something much more manageable
 (* target-steps target-steps);; ->  702 322 346 863 225  search area too large to hold in memory
 
+(defn wrapped-get [m height width [y x]]
+  (let [mod-y (mod y height)
+        mod-x (mod x width)]
+    (get-in m [mod-y mod-x])))
+
 (defn may-move-wrap? [m height width pos dir]
   (let [[y' x' :as pos'] (dir pos)
         mod-y (mod y' height)
@@ -199,3 +204,17 @@
 
 
 (def steps-sample (count-steps-to-visit-all sample-input))
+
+(let [m (parse-input sample-input)
+      steps
+      (count-possible-steps2 sample-input 20)]
+  (println "---- visualization -----")
+  (println
+   (str/join
+    "\n"
+    (for [y (range -30 30)]
+      (str/join
+       (for [x (range -30 30)]
+         (if (steps [y x])
+           \O
+           (wrapped-get m (count m) (count (first m)) [y x]))))))))
