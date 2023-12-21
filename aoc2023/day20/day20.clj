@@ -236,6 +236,7 @@
 
 ;; making loops, this won't work like this
 
+;; Idea was to backtrack and find a state that would trigger message to "rx"
 (defn find-dream-state [network target-module]
   (loop [network-state {}
          visited-modules #{}
@@ -279,7 +280,8 @@
 
 ;; okay, but all the conjunction nodes could've gotten their memories set on an earlier position of the flip-flops
 
-
+;; What about repeatedly pressing the button until find out when every node has
+;; a period that we can analyze?
 (defn periods-done? [network]
   (->> (dissoc network broadcaster "output" "rx" :tick)
        vals
@@ -328,6 +330,10 @@
 
 (keys periods)
 
+;; Well this is not working. (It could've have but I didn't realize to remove the important nodes from the system)
+
+;; I analyzed the network with graphviz (see the .svg file in the same directory. It seems that paring down the network makes it easier to analyze
+
 (puzzle-network broadcaster)
 
 (def lp-broadcaster (assoc-in puzzle-network [broadcaster :outputs] ["lp"]))
@@ -368,6 +374,7 @@
                  (assoc-in [broadcaster :outputs] ["fn"])
                  (assoc-in ["ll" :memory] {"vm" :low}))); 4051
 
+;; Ah, they have different periods. The periods matching idea will work though
 
 (defn gcd [a b]
   (loop [a a
