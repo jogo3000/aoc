@@ -1,5 +1,6 @@
 (ns day21
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [clojure.set :as set]))
 
 (def sample-input (str/trim (slurp "day21/sample1.txt")))
 (def puzzle-input (str/trim (slurp "day21/input.txt")))
@@ -24,6 +25,10 @@
 
 (defn west [[y x]]
   [y (dec x)])
+
+(defn inside-map? [max-y max-x [y' x']]
+  (and (<= 0 y' max-y)
+       (<= 0 x' max-x)))
 
 (defn may-move? [m pos dir]
   (let [max-x (dec (count (first m)))
@@ -85,8 +90,8 @@
   (visualize m (count-possible-steps sample-input 2)))
 
 (let [m (parse-input sample-input)]
-  (doseq [n (range 10)]
-    (visualize m (count-possible-steps sample-input n))))
+  (doseq [n (range 100)]
+    (println n (count (count-possible-steps sample-input n)))))
 
 #_(count (count-possible-steps puzzle-input 64)); 3776 - This works
 
@@ -102,3 +107,95 @@
         mod-x (mod x' width)]
     (when (not= rock (get-in m [mod-y mod-x]))
       pos')))
+
+(defn count-possible-steps2 [input steps]
+  (let [m (parse-input input)
+        height (count m)
+        width (count (first m))
+        starting-position (find-starting-position m)]
+    (->> (range steps)
+         (reduce (fn [{:keys [queue visited]} _]
+                   (let [new-spots
+                         (set
+                          (mapcat identity
+                                  (for [spot queue]
+                                    (let [allowed-positions
+                                          (keep (partial may-move-wrap? m height width spot) [north south east west])]
+                                      allowed-positions))))]
+                     {:queue (remove #(contains? visited %) new-spots)
+                      :visited (into (update-vals visited not)
+                                     (map (juxt identity (constantly true)))
+                                     new-spots)}))
+                 {:queue [starting-position]
+                  :visited {starting-position true}})
+         :visited
+         (filter second)
+         (map first)
+         (into #{}))))
+
+(defn count-steps-to-visit-all [input]
+  (let [m (parse-input input)
+        height (count m)
+        width (count (first m))
+        starting-position (find-starting-position m)
+        garden-spots (into #{} (for [y (range height)
+                                     x (range width)
+                                     :when (not= rock (get-in m [y x]))]
+                                 [y x]))]
+    (loop [{:keys [queue visited]} {:queue [starting-position]
+                                    :visited {starting-position true}}
+           steps 0]
+      (if (or (> steps (* 2 width))
+           (= garden-spots (set/intersection (set (keys visited)) garden-spots)))
+        [steps visited]
+        (let [new-spots
+              (set
+               (mapcat identity
+                       (for [spot queue]
+                         (let [allowed-positions
+                               (keep (partial may-move-wrap? m height width spot) [north south east west])]
+                           allowed-positions))))]
+          (recur
+           {:queue (remove #(contains? visited %) new-spots)
+            :visited (into (update-vals visited not)
+                           (map (juxt identity (constantly true)))
+                           new-spots)}
+           (inc steps)))))))
+
+(def steps-all (count-steps-to-visit-all puzzle-input))
+
+(let [m (parse-input puzzle-input)]
+  (visualize m (->> (second steps-all)
+                    (filter second)
+                    (map first)
+                    (into #{}))))
+
+(def parsed-puzzle (parse-input puzzle-input))
+
+(->> (second steps-all)
+     (filter second) ;; Näistä lukemista pitää poistaa ruudukon ulkopuolelle jäävä kama
+     (map first)
+     (filter (partial inside-map? (dec (count parsed-puzzle))
+                      (dec (count (first parsed-puzzle)))))
+     count); 7597
+
+(->> (second steps-all)
+     (filter (complement second))
+     (map first)
+     (filter (partial inside-map? (dec (count parsed-puzzle))
+                      (dec (count (first parsed-puzzle)))))
+     count); 7689
+
+(count
+ (for [y (range (count parsed-puzzle))
+       x (range (count (first parsed-puzzle)))
+       :when (= rock (get-in parsed-puzzle [y x]))]
+   [y x])) ; 1870
+
+(* (count parsed-puzzle)
+   (count (first parsed-puzzle))) ; 17161
+
+
+
+
+(def steps-sample (count-steps-to-visit-all sample-input))
