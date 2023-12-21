@@ -201,15 +201,6 @@
 
 (def steps-to-hit-edge (count-steps-to-hit-edge puzzle-input))
 
-(visualize parsed-puzzle
-           (->> (second steps-to-hit-edge)
-                (filter second)
-                (map first)
-                (filter (partial inside-map? (dec 131)
-                                 (dec 131)))
-                (into #{})
-                count))
-
 (def on-steps-full (->> (second steps-to-hit-edge)
                         (filter second)
                         (map first)
@@ -228,85 +219,59 @@
 
 (def off-steps-full-count  (count off-steps-full))
 
-(def steps-all (count-steps-to-visit-all puzzle-input))
+(comment
+  (def test-input (str/join "\n" (for [y (range 131)]
+                                   (str/join
+                                    (for [x (range 131)]
+                                      (if (= [y x] [65 65])
+                                        \S
+                                        \.))))))
 
-(def test-input (str/join "\n" (for [y (range 131)]
-                                 (str/join
-                                  (for [x (range 131)]
-                                    (if (= [y x] [65 65])
-                                      \S
-                                      \.))))))
+  (def test-steps-all (count-steps-to-visit-all test-input))
 
-(def test-steps-all (count-steps-to-visit-all test-input))
+  (def test-steps-count (->> (second test-steps-all)
+                             (filter second)
+                             (map first)
+                             (filter (partial inside-map? (dec 131)
+                                              (dec 131)))
+                             (into #{})
+                             count))
 
-(def test-steps-count (->> (second test-steps-all)
-                           (filter second)
-                           (map first)
-                           (filter (partial inside-map? (dec 131)
-                                            (dec 131)))
-                           (into #{})
-                           count))
+  (def test-steps-inside-map (->> (second test-steps-all)
+                                  (filter second)
+                                  (map first)
+                                  (filter (partial inside-map? (dec 131)
+                                                   (dec 131)))
+                                  (into #{})))
 
-(def test-steps-inside-map (->> (second test-steps-all)
-                                (filter second)
-                                (map first)
-                                (filter (partial inside-map? (dec 131)
-                                                 (dec 131)))
-                                (into #{})))
+  (def test-steps-inside-map-off (->> (second test-steps-all)
+                                      (filter (complement second))
+                                      (map first)
+                                      (filter (partial inside-map? (dec 131)
+                                                       (dec 131)))
+                                      (into #{})))
 
-(def test-steps-inside-map-off (->> (second test-steps-all)
-                                    (filter (complement second))
-                                    (map first)
-                                    (filter (partial inside-map? (dec 131)
-                                                     (dec 131)))
-                                    (into #{})))
-
-(def steps-on-off-map (set/difference test-steps-inside-map
+  (def steps-on-off-map (set/difference test-steps-inside-map
                                         (set (for [y (range (count parsed-puzzle))
                                                    x (range (count (first parsed-puzzle)))
                                                    :when (= rock (get-in parsed-puzzle [y x]))]
                                                [y x])))) ; 7694
 
-(count (set/difference test-steps-inside-map-off
-                       (set (for [y (range (count parsed-puzzle))
-                                  x (range (count (first parsed-puzzle)))
-                                  :when (= rock (get-in parsed-puzzle [y x]))]
-                              [y x])))); 7597 <- this is actually super close to "steps on on map" calculated with a different method
+  (count (set/difference test-steps-inside-map-off
+                         (set (for [y (range (count parsed-puzzle))
+                                    x (range (count (first parsed-puzzle)))
+                                    :when (= rock (get-in parsed-puzzle [y x]))]
+                                [y x])))); 7597 <- this is actually super close to "steps on on map" calculated with a different method
 
-(let [m (parse-input test-input)]
-  (visualize m (->> (second test-steps-all)
-                    (filter second)
-                    (map first)
-                    (into #{}))))
+  (let [m (parse-input test-input)]
+    (visualize m (->> (second test-steps-all)
+                      (filter second)
+                      (map first)
+                      (into #{}))))
 
-(let [m (parse-input test-input)]
-  (visualize m (->> test-steps-inside-map-off)))
+  (let [m (parse-input test-input)]
+    (visualize m (->> test-steps-inside-map-off))))
 
-(let [m (parse-input puzzle-input)]
-  (visualize m (->> steps-on-on-map)))
-
-
-
-(let [m (parse-input puzzle-input)]
-  (visualize m (->> (second steps-all)
-                    (filter second)
-                    (map first)
-                    (into #{}))))
-
-
-(def steps-on-on-map
-  (->> (second steps-all)
-       (filter second)
-       (map first)
-       (filter (partial inside-map? (dec (count parsed-puzzle))
-                        (dec (count (first parsed-puzzle))))))) ; 7597
-
-(def steps-on-off-map
-  (->> (second steps-all)
-       (filter (complement second))
-       (map first)
-       (filter (partial inside-map? (dec (count parsed-puzzle))
-                        (dec (count (first parsed-puzzle))))))) ; 7689
 
 (def stones-whole-map
   (count
@@ -315,75 +280,11 @@
          :when (= rock (get-in parsed-puzzle [y x]))]
      [y x]))) ; 1870
 
-(* (count parsed-puzzle)
-   (count (first parsed-puzzle))) ; 17161
+; (apply + (map #(* 4 %) (range target-steps 0 -2))) ;; without rocks removed count is 702 322 399 865 956
 
-(count parsed-puzzle)
-
-
-
-
-(def steps-sample (count-steps-to-visit-all sample-input))
-
-(let [n 20
-      m (parse-input sample-input)
-      steps
-      (count-possible-steps2 sample-input n)]
-  (println "---- visualization -----")
-  (println
-   (str/join
-    "\n"
-    (for [y (range (- n) (+ n 10))]
-      (str/join
-       (for [x (range (- n) (+ n 10))]
-         (if (steps [y x])
-           \O
-           (wrapped-get m (count m) (count (first m)) [y x]))))))))
-
-
-(let [n 200
-      m (parse-input puzzle-input)
-      steps
-      (count-possible-steps2 puzzle-input n)]
-  (println "---- visualization -----")
-  (println
-   (str/join
-    "\n"
-    (for [y (range (- n) (+ n 10))]
-      (str/join
-       (for [x (range (- n) (+ n 10))]
-         (if (steps [y x])
-           \O
-           (wrapped-get m (count m) (count (first m)) [y x]))))))))
-
-(let [n 7
-      sample-input ".....\n.....\n..S..\n.....\n....."
-      m (parse-input sample-input)
-      steps
-      (count-possible-steps2 sample-input n)]
-  (println "---- visualization -----")
-  (println
-   (str/join
-    "\n"
-    (for [y (range (- n) (+ n 10))]
-      (str/join
-       (for [x (range (- n) (+ n 10))]
-         (if (steps [y x])
-           \O
-           (wrapped-get m (count m) (count (first m)) [y x]))))))))
-
-
-(apply + (map #(* 4 %) (range 7 0 -2))) 64
-
-(apply + (map #(* 4 %) (range 5 0 -2))) 36
-
-(apply + (map #(* 4 %) (range 5000 0 -2))) 25010000
-
-(apply + (map #(* 4 %) (range target-steps 0 -2))) ;; without rocks removed count is 702 322 399 865 956
-
-(quot target-steps (count parsed-puzzle)) ;; 202300
+; (quot target-steps (count parsed-puzzle)) ;; 202300
 ;; (* 202300 202300) ; 40 925 290 000 <- still way too many whole maps to go through
-(rem target-steps (count parsed-puzzle)) ; 65 <- exactly half of the puzzle!
+; (rem target-steps (count parsed-puzzle)) ; 65 <- exactly half of the puzzle!
 
 ;; This means the walk ends to the edge of the puzzle. I can see there is a clearance area that can be walked
 
