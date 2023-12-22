@@ -89,6 +89,8 @@
        drop-bricks
        find-safe-to-disintegrate))
 
-(count (analyze-input sample-input)) ; 5 <- ok
+#_(count (analyze-input sample-input)) ; 5 <- ok
 
-(count (analyze-input puzzle-input))
+#_(count (analyze-input puzzle-input))
+
+;; 391 This worked out but was really slow
