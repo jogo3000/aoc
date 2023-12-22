@@ -482,87 +482,66 @@
 ;; does my calculation match then (+ 101150 101150) (+ 101149 101149) 202298
 ;; It does match
 (let [on-steps on-steps-full-count
-      off-steps off-steps-full-count]
+      off-steps off-steps-full-count
+      rounds 202300]
 
-  (+ ;; starting map 1 "on" in the middle
-   on-steps
-   ;; pillars
-   ;; right hand side 202300 maps right to the center, with 1 as the tip
-   (* 101149 on-steps) (* 101150 off-steps) right-tip
+  (letfn [(wing [extra1 extra2]
+           (loop [steps 0
+                  level 1]
+             (if (not= (+ 2 level) rounds)
+               (let [even-steps (if (odd? level) (- rounds level 2)
+                                    (- rounds level 2 1))]
+                 (recur (+ steps
+                           (if (even? level) off-steps 0)
+                           (* (/ even-steps 2) on-steps)
+                           (* (/ even-steps 2) off-steps)
+                           extra1
+                           extra2)
+                        (inc level)))
 
-   ;; top pillar is the same as right hand side but tip is different
-   (* 101149 on-steps) (* 101150 off-steps) top-tip
+               ;; remaining extra step
+               (+ steps extra2))))]
 
-   ;; bottom pillar
-   (* 101149 on-steps) (* 101150 off-steps) bottom-tip
+    (+ ;; starting map 1 "on" in the middle
+     on-steps
+     ;; pillars
+     ;; right hand side 202300 maps right to the center, with 1 as the tip
+     (* 101149 on-steps) (* 101150 off-steps) right-tip
 
-   ;; left pillar
-   (* 101149 on-steps) (* 101150 off-steps) left-tip
+     ;; top pillar is the same as right hand side but tip is different
+     (* 101149 on-steps) (* 101150 off-steps) top-tip
 
-   ;; right to top
-   ;; Starting with 1 "on", final two maps are remove top right "on", only bottom left "off"
-   ;; so amount of maps lessens by two each round until we reach the position its only the two and then one
-   ;; (- 202300 2) 202298 which means half are "on" half are "off"
-   (loop [steps 0
-          to-go (- 202300 2)]
-     (if (not (neg? to-go))
-       (recur (+ steps
-                 (* (/ to-go 2) on-steps)
-                 (* (/ to-go 2) off-steps)
-                 top-right-removed-on
-                 only-bottom-left-off)
-              (- to-go 2))
+     ;; bottom pillar
+     (* 101149 on-steps) (* 101150 off-steps) bottom-tip
 
-       ;; right to top remaining map
-       (+ steps only-bottom-left-off)))
+     ;; left pillar
+     (* 101149 on-steps) (* 101150 off-steps) left-tip
+
+     ;; right to top
+     ;; Starting with 1 "on", final two maps are remove top right "on", only bottom left "off"
+     ;; so amount of maps lessens by two each round until we reach the position its only the two and then one
+     ;; (- 202300 2) 202298 which means half are "on" half are "off"
+     (wing top-right-removed-on only-bottom-left-off)
 
 
-   ;; left to top
-   ;; Here the final ones are 1 only-bottom-right "off", 1 remove top left "on"
-   (loop [steps 0
-          to-go (- 202300 2)]
-     (if (not (neg? to-go))
-       (recur (+ steps
-                 (* (/ to-go 2) on-steps)
-                 (* (/ to-go 2) off-steps)
-                 top-left-removed-on
-                 only-bottom-right-off)
-              (- to-go 2))
+     ;; left to top
+     ;; Here the final ones are 1 only-bottom-right "off", 1 remove top left "on"
+     (wing top-left-removed-on only-bottom-right-off)
 
-       ;; left to top remaining map
-       (+ steps only-bottom-right-off)))
+     ;; left to bottom
+     ;; Here final ones are only-top-right "off", remove-bottom-left "on"
+     (wing bottom-left-removed-on only-top-right-off)
 
-   ;; left to bottom
-   ;; Here final ones are only-top-right "off", remove-bottom-left "on"
-   (loop [steps 0
-          to-go (- 202300 2)]
-     (if (not (neg? to-go))
-       (recur (+ steps
-                 (* (/ to-go 2) on-steps)
-                 (* (/ to-go 2) off-steps)
-                 bottom-left-removed-on
-                 only-top-right-off)
-              (- to-go 2))
+     ;; right to bottom
+     ;; rightmost two are now remove bottom right "on" and only-top-left "off"
+     (wing bottom-right-removed-on only-top-left-off)
 
-       ;; left to bottom remaining map
-       (+ steps only-top-right-off)))
+     )))
 
-   ;; right to bottom
-   ;; rightmost two are now remove bottom right "on" and only-top-left "off"
-   (loop [steps 0
-          to-go (- 202300 2)]
-     (if (not (neg? to-go))
-       (recur (+ steps
-                 (* (/ to-go 2) on-steps)
-                 (* (/ to-go 2) off-steps)
-                 bottom-right-removed-on
-                 only-top-left-off)
-              (- to-go 2))
-
-       ;; right to bottom remaining map
-       (+ steps only-top-right-off)))
-
-   ))
+;; 625580912434268N
+;; dang, still not right. What the hell?
+;; Forgot tho compensate for the not even steps
+;; 625584004730924N Not right. But this seems closer to truth
 
 ;; 312798177808091 ;; No, wtf?
 
@@ -596,3 +575,26 @@
 
 
 ;; 2529609279877830 is too high
+
+                                        ; 1 kerros 202300 - 2, alkaa "on" loppuu "off" + reunapalat
+                                        ; 2 kerros 202298 - 2, alkaa off loppuu off + reunapalat
+
+#_(println
+   (let [rounds 101]
+     (loop [steps ""
+            level 1]
+       (if (not (= (+ 2 level) rounds))
+         (recur (str (str
+                      (str/join (remove nil?
+                                        (cons (if-not (odd? level) \. nil)
+                                              (take (if (odd? level) (- rounds level 2)
+                                                        (- rounds level 2 1))
+                                                    (cycle [\O \.])))))
+                      "T"
+                      "B")
+                     \newline
+                     steps)
+                (inc level))
+
+         ;; right to top remaining map
+         (str "B\n" steps)))))
