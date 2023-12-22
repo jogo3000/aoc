@@ -473,13 +473,19 @@
       trr (visualize-str parsed-puzzle top-right-removed-on-full)
       cle (visualize-str parsed-puzzle #{})]
   (println
-   (join-maps-horizontal
+   (join-maps-horizontal                ; middle
+    (join-maps-vertical cle cle cle bro lt  tro cle cle  cle)
     (join-maps-vertical cle cle bro tlr off blr tro cle  cle)
     (join-maps-vertical cle bro tlr off on  off blr tro  cle)
     (join-maps-vertical bro tlr off on  off on  off blr  tro)
     (join-maps-vertical tt  off on  off on  off on  off  bt) ;; top row
-    (join-maps-vertical blo trr off on  off on  off brr  tlo))))
+    (join-maps-vertical blo trr off on  off on  off brr  tlo)
+    (join-maps-vertical cle blo trr off on  off brr tlo  cle)
+    (join-maps-vertical cle cle blo trr off brr tlo cle  cle)
+    (join-maps-vertical cle cle cle blo rt  tlo cle cle  cle))))
 
+;; 310036
+;; 218120N System counts like this
 
 (println
  (join-maps-vertical
@@ -535,17 +541,20 @@
 ;; It does match
 (let [on-steps on-steps-full-count
       off-steps off-steps-full-count
-      rounds 202300]
+      rounds 202300
+      pillar-on-steps 101149
+      pillar-off-steps 101150]
 
   (letfn [(wing [extra1 extra2]
             (loop [steps (+ extra1 extra2 extra2) ;; The extra steps
                    ;; left after
                    ;; iteration
                    level 1]
-              (if (= (+ 2 level) rounds)
+              (if (> (+ 2 level) rounds)
                 steps
-                (let [even-steps (if (odd? level) (- rounds level 2)
-                                     (- rounds level 2 1))]
+                (let [even-steps (if (odd? level)
+                                   (- rounds 2 (dec level))
+                                   (- rounds 2 (dec level) 1))]
                   (recur (+ steps
                             (if (even? level) off-steps 0)
                             (* (/ even-steps 2) on-steps)
@@ -558,21 +567,20 @@
      on-steps
      ;; pillars
      ;; right hand side 202300 maps right to the center, with 1 as the tip
-     (* 101149 on-steps) (* 101150 off-steps) right-tip
+     (* pillar-on-steps on-steps) (* pillar-off-steps off-steps) right-tip
 
      ;; top pillar is the same as right hand side but tip is different
-     (* 101149 on-steps) (* 101150 off-steps) top-tip
+     (* pillar-on-steps on-steps) (* pillar-off-steps off-steps) top-tip
 
      ;; bottom pillar
-     (* 101149 on-steps) (* 101150 off-steps) bottom-tip
+     (* pillar-on-steps on-steps) (* pillar-off-steps off-steps) bottom-tip
 
      ;; left pillar
-     (* 101149 on-steps) (* 101150 off-steps) left-tip
+     (* pillar-on-steps on-steps) (* pillar-off-steps off-steps) left-tip
 
      ;; right to top
      ;; Starting with 1 "on", final two maps are remove top right "on", only bottom left "off"
      ;; so amount of maps lessens by two each round until we reach the position its only the two and then one
-     ;; (- 202300 2) 202298 which means half are "on" half are "off"
      (wing top-right-removed-on only-bottom-left-off)
 
 
@@ -589,6 +597,8 @@
      (wing bottom-right-removed-on only-top-left-off)
 
      )))
+
+;; 625 587 097 150 084
 
 ;; 625 580 912 464 856N ;; Not right?
 ;; 625580912434268N ; Noticed that missing the final step
