@@ -94,3 +94,31 @@
 #_(count (analyze-input puzzle-input))
 
 ;; 391 This worked out but was really slow
+
+;; part deux
+
+;; Well, since the code was able to identify what happened, albeit slow, can't I just run a different version that reports which other bricks will fall? And with a quick fail perhaps? Nah, this'll do.
+
+
+(defn find-best-bricks-to-disintegrate [bricks]
+ (let [brick-set (set bricks)]
+   (loop [falling-bricks []
+          queue (sort-bricks bricks)]
+     (if (empty? queue)
+       falling-bricks
+       (let [brick (first queue)
+             other-bricks (disj brick-set brick)]
+         (recur
+          (conj falling-bricks (set/difference (set (drop-bricks other-bricks))
+                                               other-bricks))
+          (rest queue)))))))
+
+(->> puzzle-input
+     parse-input
+     drop-bricks
+     find-best-bricks-to-disintegrate
+     (remove empty?)
+     (map count)
+     (reduce +))
+
+;; 69601 lmao
