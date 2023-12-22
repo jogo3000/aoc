@@ -204,11 +204,6 @@
 (def steps-to-fill-map (count-steps-to-hit-point puzzle-input [65 -130]))
 (def steps-to-fill-map-off (count-steps-to-hit-point puzzle-input [65 -133]))
 
-(println
- (join-maps-horizontal
-  (visualize-str parsed-puzzle on-steps-full)
-  (visualize-str parsed-puzzle off-steps-full)))
-
 (def on-steps-full (->> (second steps-to-fill-map)
                         (filter second)
                         (map first)
