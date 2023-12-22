@@ -104,7 +104,7 @@
 ;; Part deux
 
 (def target-steps 26501365)
-(quot target-steps 130) ; 203856 full screens wide
+(quot target-steps 131) ; 202300 full screens wide
 
 (* target-steps target-steps);; ->  702 322 346 863 225  search area too large to hold in memory
 (+ 26501365 26501365 26501365 26501365) ; 106 005 460 Something much more manageable
@@ -435,12 +435,12 @@
 (def top-right-removed-on               ; 6661
   (count top-right-removed-on-full))
 
-(def bottom-right-removed-on
+(def bottom-right-removed-on-full
   (->> on-steps-full
        (remove-bottom-right)
-       (into #{})
-       count ; inc
-       ))
+       (into #{})))
+
+(def bottom-right-removed-on (count bottom-right-removed-on-full))
 
 (def top-left-removed-on-full
   (->> on-steps-full
@@ -449,12 +449,36 @@
 
 (def top-left-removed-on (count top-left-removed-on-full))
 
-(def bottom-left-removed-on             ; 6694
+(def bottom-left-removed-on-full
   (->> on-steps-full
        (remove-bottom-left)
-       (into #{})
-       count                            ; inc
-       ))
+       (into #{})))
+
+(def bottom-left-removed-on
+  (count bottom-left-removed-on-full))
+
+(let [bro (visualize-str parsed-puzzle only-bottom-right-off-full)
+      blo (visualize-str parsed-puzzle only-bottom-left-off-full)
+      tro (visualize-str parsed-puzzle only-top-right-off-full)
+      tlo (visualize-str parsed-puzzle only-top-left-off-full)
+      tt (visualize-str parsed-puzzle top-tip-full)
+      bt (visualize-str parsed-puzzle bottom-tip-full)
+      rt (visualize-str parsed-puzzle right-tip-full)
+      lt (visualize-str parsed-puzzle left-tip-full)
+      off (visualize-str parsed-puzzle off-steps-full)
+      on (visualize-str parsed-puzzle on-steps-full)
+      blr (visualize-str parsed-puzzle bottom-left-removed-on-full)
+      brr (visualize-str parsed-puzzle bottom-right-removed-on-full)
+      tlr (visualize-str parsed-puzzle top-left-removed-on-full)
+      trr (visualize-str parsed-puzzle top-right-removed-on-full)
+      cle (visualize-str parsed-puzzle #{})]
+  (println
+   (join-maps-horizontal
+    (join-maps-vertical cle cle bro tlr off blr tro cle  cle)
+    (join-maps-vertical cle bro tlr off on  off blr tro  cle)
+    (join-maps-vertical bro tlr off on  off on  off blr  tro)
+    (join-maps-vertical tt  off on  off on  off on  off  bt) ;; top row
+    (join-maps-vertical blo trr off on  off on  off brr  tlo))))
 
 
 (println
@@ -484,6 +508,15 @@
   (visualize-str parsed-puzzle only-bottom-right-off-full)
   (visualize-str parsed-puzzle left-tip-full)
   (visualize-str parsed-puzzle only-top-right-off-full)))
+
+
+(println
+ (join-maps-horizontal
+  (visualize-str parsed-puzzle only-top-right-off-full)
+  (visualize-str parsed-puzzle bottom-tip-full)
+  (visualize-str parsed-puzzle only-top-left-off-full))
+
+ )
 
 ;; To be clear, first map is on and because the amount traveled right is
 ;; even (202300), the last is "on" too
