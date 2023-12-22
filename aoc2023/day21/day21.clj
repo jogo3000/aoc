@@ -353,18 +353,16 @@
                       stones-bottom-right
                       stones-bottom-left))
 
-(def left-tip (->> on-steps-full
-                   (remove-bottom-left)
-                   (remove-top-left)
-                   (into #{})
-                   count
-                   ;inc "on", so middle position unvisited
-                   ))
+(def left-tip-full (->> on-steps-full
+                        (remove-bottom-left)
+                        (remove-top-left)
+                        (into #{})))
+(def left-tip (count left-tip-full))
 
 (def right-tip-full (->> on-steps-full
-                    (remove-bottom-right)
-                    (remove-top-right)
-                    (into #{})))
+                         (remove-bottom-right)
+                         (remove-top-right)
+                         (into #{})))
 
 (def right-tip (count right-tip-full))
 
@@ -429,12 +427,13 @@
        count))
 
 
-(def top-right-removed-on ; 6661
+(def top-right-removed-on-full
   (->> on-steps-full
        (remove-top-right)
-       (into #{})
-       count ; inc
-       ))
+       (into #{})))
+
+(def top-right-removed-on               ; 6661
+  (count top-right-removed-on-full))
 
 (def bottom-right-removed-on
   (->> on-steps-full
@@ -443,28 +442,48 @@
        count ; inc
        ))
 
-(def top-left-removed-on
+(def top-left-removed-on-full
   (->> on-steps-full
        (remove-top-left)
-       (into #{})
-       count ; inc
-       ))
+       (into #{})))
 
-(def bottom-left-removed-on ; 6694
+(def top-left-removed-on (count top-left-removed-on-full))
+
+(def bottom-left-removed-on             ; 6694
   (->> on-steps-full
        (remove-bottom-left)
        (into #{})
-       count ; inc
+       count                            ; inc
        ))
 
 
 (println
+ (join-maps-vertical
+  (join-maps-horizontal
+   (visualize-str parsed-puzzle only-bottom-right-off-full)
+   (visualize-str parsed-puzzle top-tip-full)
+   (visualize-str parsed-puzzle only-bottom-left-off-full))
+
+  (join-maps-horizontal
+   (visualize-str parsed-puzzle top-left-removed-on-full)
+   (visualize-str parsed-puzzle off-steps-full)
+   (visualize-str parsed-puzzle top-right-removed-on-full))))
+
+;; top-tip-full(wing top-right-removed-on only-bottom-left-off)
+(println
  (join-maps-horizontal
+  (join-maps-vertical
+   (visualize-str parsed-puzzle top-right-removed-on-full)
+   (visualize-str parsed-puzzle off-steps-full))
+  (join-maps-vertical
+   (visualize-str parsed-puzzle only-bottom-left-off-full)
+   (visualize-str parsed-puzzle right-tip-full))))
+
+(println
+ (join-maps-vertical
   (visualize-str parsed-puzzle only-bottom-right-off-full)
-  (visualize-str parsed-puzzle top-tip-full)
-  (visualize-str parsed-puzzle only-bottom-left-off-full)))
-
-
+  (visualize-str parsed-puzzle left-tip-full)
+  (visualize-str parsed-puzzle only-top-right-off-full)))
 
 ;; To be clear, first map is on and because the amount traveled right is
 ;; even (202300), the last is "on" too
@@ -486,21 +505,21 @@
       rounds 202300]
 
   (letfn [(wing [extra1 extra2]
-           (loop [steps 0
-                  level 1]
-             (if (not= (+ 2 level) rounds)
-               (let [even-steps (if (odd? level) (- rounds level 2)
-                                    (- rounds level 2 1))]
-                 (recur (+ steps
-                           (if (even? level) off-steps 0)
-                           (* (/ even-steps 2) on-steps)
-                           (* (/ even-steps 2) off-steps)
-                           extra1
-                           extra2)
-                        (inc level)))
-
-               ;; remaining extra step
-               (+ steps extra2))))]
+            (loop [steps (+ extra1 extra2 extra2) ;; The extra steps
+                   ;; left after
+                   ;; iteration
+                   level 1]
+              (if (= (+ 2 level) rounds)
+                steps
+                (let [even-steps (if (odd? level) (- rounds level 2)
+                                     (- rounds level 2 1))]
+                  (recur (+ steps
+                            (if (even? level) off-steps 0)
+                            (* (/ even-steps 2) on-steps)
+                            (* (/ even-steps 2) off-steps)
+                            extra1
+                            extra2)
+                         (inc level))))))]
 
     (+ ;; starting map 1 "on" in the middle
      on-steps
@@ -538,7 +557,8 @@
 
      )))
 
-;; 625580912434268N
+;; 625 580 912 464 856N ;; Not right?
+;; 625580912434268N ; Noticed that missing the final step
 ;; dang, still not right. What the hell?
 ;; Forgot tho compensate for the not even steps
 ;; 625584004730924N Not right. But this seems closer to truth
@@ -579,22 +599,22 @@
                                         ; 1 kerros 202300 - 2, alkaa "on" loppuu "off" + reunapalat
                                         ; 2 kerros 202298 - 2, alkaa off loppuu off + reunapalat
 
-#_(println
-   (let [rounds 101]
-     (loop [steps ""
-            level 1]
-       (if (not (= (+ 2 level) rounds))
-         (recur (str (str
-                      (str/join (remove nil?
-                                        (cons (if-not (odd? level) \. nil)
-                                              (take (if (odd? level) (- rounds level 2)
-                                                        (- rounds level 2 1))
-                                                    (cycle [\O \.])))))
-                      "T"
-                      "B")
-                     \newline
-                     steps)
-                (inc level))
+(println
+ (let [rounds 101]
+   (loop [steps ""
+          level 1]
+     (if (not (= (+ 2 level) rounds))
+       (recur (str (str
+                    (str/join (remove nil?
+                                      (cons (if-not (odd? level) \. nil)
+                                            (take (if (odd? level) (- rounds level 2)
+                                                      (- rounds level 2 1))
+                                                  (cycle [\O \.])))))
+                    "T"
+                    "B")
+                   \newline
+                   steps)
+              (inc level))
 
-         ;; right to top remaining map
-         (str "B\n" steps)))))
+       ;; right to top remaining map
+       (str "B\nTB\n" steps)))))
