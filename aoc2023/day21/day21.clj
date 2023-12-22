@@ -74,18 +74,22 @@
 
 (count (count-possible-steps sample-input 6))
 
+(defn visualize-str [m steps]
+  (let [steps (set steps)]
+    (str/join
+     "\n"
+     (for [y (range (count m))]
+       (str/join
+        (for [x (range (count (first m)))]
+          (if (steps [y x])
+            \O
+            (get-in m [y x]))))))))
+
 (defn visualize [m steps]
   (let [steps (set steps)]
     (println "---- visualization -----")
     (println
-     (str/join
-      "\n"
-      (for [y (range (count m))]
-        (str/join
-         (for [x (range (count (first m)))]
-           (if (steps [y x])
-             \O
-             (get-in m [y x])))))))))
+     (visualize-str m steps))))
 
 
 (let [m (parse-input sample-input)]
@@ -171,7 +175,7 @@
                            new-spots)}
            (inc steps)))))))
 
-(defn count-steps-to-hit-edge [input]
+(defn count-steps-to-hit-point [input target]
   (let [m (parse-input input)
         height (count m)
         width (count (first m))
@@ -180,10 +184,7 @@
                                     :visited {starting-position true}}
            steps 0]
       (if (or (> steps (* 2 width))
-              (contains? visited [65 -130])
-              (contains? visited [65 (* 2 130)])
-              #_#_(contains? visited [0 65])
-              (contains? visited [0 130]))
+              (contains? visited target))
         [steps visited]
         (let [new-spots
               (set
@@ -199,78 +200,32 @@
                            new-spots)}
            (inc steps)))))))
 
-(def steps-to-hit-edge (count-steps-to-hit-edge puzzle-input))
+(def steps-to-hit-edge (count-steps-to-hit-point puzzle-input [65 0]))
+(def steps-to-fill-map (count-steps-to-hit-point puzzle-input [65 -130]))
+(def steps-to-fill-map-off (count-steps-to-hit-point puzzle-input [65 -133]))
 
-(def on-steps-full (->> (second steps-to-hit-edge)
+(println
+ (join-maps-horizontal
+  (visualize-str parsed-puzzle on-steps-full)
+  (visualize-str parsed-puzzle off-steps-full)))
+
+(def on-steps-full (->> (second steps-to-fill-map)
                         (filter second)
                         (map first)
                         (filter (partial inside-map? (dec 131)
                                          (dec 131)))
                         (into #{})))
 
-(def on-steps-full-count (count on-steps-full))
+(def on-steps-full-count (count on-steps-full))  ;; 7597
 
-(def off-steps-full (->> (second steps-to-hit-edge)
-                         (filter (complement second))
+(def off-steps-full (->> (second steps-to-fill-map-off)
+                         (filter second)
                          (map first)
                          (filter (partial inside-map? (dec 131)
                                           (dec 131)))
                          (into #{})))
 
-(def off-steps-full-count  (count off-steps-full))
-
-(comment
-  (def test-input (str/join "\n" (for [y (range 131)]
-                                   (str/join
-                                    (for [x (range 131)]
-                                      (if (= [y x] [65 65])
-                                        \S
-                                        \.))))))
-
-  (def test-steps-all (count-steps-to-visit-all test-input))
-
-  (def test-steps-count (->> (second test-steps-all)
-                             (filter second)
-                             (map first)
-                             (filter (partial inside-map? (dec 131)
-                                              (dec 131)))
-                             (into #{})
-                             count))
-
-  (def test-steps-inside-map (->> (second test-steps-all)
-                                  (filter second)
-                                  (map first)
-                                  (filter (partial inside-map? (dec 131)
-                                                   (dec 131)))
-                                  (into #{})))
-
-  (def test-steps-inside-map-off (->> (second test-steps-all)
-                                      (filter (complement second))
-                                      (map first)
-                                      (filter (partial inside-map? (dec 131)
-                                                       (dec 131)))
-                                      (into #{})))
-
-  (def steps-on-off-map (set/difference test-steps-inside-map
-                                        (set (for [y (range (count parsed-puzzle))
-                                                   x (range (count (first parsed-puzzle)))
-                                                   :when (= rock (get-in parsed-puzzle [y x]))]
-                                               [y x])))) ; 7694
-
-  (count (set/difference test-steps-inside-map-off
-                         (set (for [y (range (count parsed-puzzle))
-                                    x (range (count (first parsed-puzzle)))
-                                    :when (= rock (get-in parsed-puzzle [y x]))]
-                                [y x])))); 7597 <- this is actually super close to "steps on on map" calculated with a different method
-
-  (let [m (parse-input test-input)]
-    (visualize m (->> (second test-steps-all)
-                      (filter second)
-                      (map first)
-                      (into #{}))))
-
-  (let [m (parse-input test-input)]
-    (visualize m (->> test-steps-inside-map-off))))
+(def off-steps-full-count (count off-steps-full)) ; 7689
 
 
 (def stones-whole-map
@@ -298,7 +253,7 @@
 ;;
 
 
-;; Ok middle row is 202300 maps of "on", 202300 maps of "off
+;; Ok middle row is 202300 maps of "on", 202300 maps of "off, plus one in the middle "on"
 
 
 
@@ -309,6 +264,17 @@
   (->> places
        (filter (fn [[y x]]
                  (< x (- 65 y))))))
+
+(defn join-maps-horizontal [& maps]
+  (->> maps
+       (map #(map str/trim (str/split-lines %)))
+       (apply interleave)
+       (partition (count maps))
+       (map #(apply str %))
+       (str/join "\n")))
+
+(defn join-maps-vertical [& maps]
+  (str/join "\n" maps))
 
 (defn remove-top-left [places]
   (->> places
@@ -400,29 +366,33 @@
                    ;inc "on", so middle position unvisited
                    ))
 
-(def right-tip (->> on-steps-full
+(def right-tip-full (->> on-steps-full
                     (remove-bottom-right)
                     (remove-top-right)
-                    (into #{})
-                    count
-                    ;; inc "on", so middle position unvisited
-                    ))
+                    (into #{})))
 
-(def bottom-tip
+(def right-tip (count right-tip-full))
+
+(def bottom-tip-full
   (->> on-steps-full
        (remove-bottom-right)
        (remove-bottom-left)
-       (into #{})
-       count ;inc
-       ))
+       (into #{})))
 
-(def top-tip ; 5723
+(def bottom-tip (count bottom-tip-full))
+
+(def top-tip-full                            ; 5723
   (->> on-steps-full
        (remove-top-right)
        (remove-top-left)
-       (into #{})
-       count ;inc
-       ))
+       (into #{})))
+
+(def top-tip (count top-tip-full))
+
+(def only-bottom-left-off-full
+  (->> off-steps-full
+       (only-bottom-left)
+       (into #{})))
 
 (def only-bottom-left-off
   (->> off-steps-full
@@ -430,17 +400,32 @@
        (into #{})
        count))
 
+(def only-bottom-right-off-full
+  (->> off-steps-full
+       (only-bottom-right)
+       (into #{})))
+
 (def only-bottom-right-off
   (->> off-steps-full
        (only-bottom-right)
        (into #{})
        count))
 
+(def only-top-right-off-full
+  (->> off-steps-full
+       (only-top-right)
+       (into #{})))
+
 (def only-top-right-off
   (->> off-steps-full
        (only-top-right)
        (into #{})
        count))
+
+(def only-top-left-off-full
+  (->> off-steps-full
+       (only-top-left)
+       (into #{})))
 
 (def only-top-left-off
   (->> off-steps-full
@@ -476,6 +461,15 @@
        (into #{})
        count ; inc
        ))
+
+
+(println
+ (join-maps-horizontal
+  (visualize-str parsed-puzzle only-bottom-right-off-full)
+  (visualize-str parsed-puzzle top-tip-full)
+  (visualize-str parsed-puzzle only-bottom-left-off-full)))
+
+
 
 ;; To be clear, first map is on and because the amount traveled right is
 ;; even (202300), the last is "on" too
@@ -516,7 +510,7 @@
    ;; (- 202300 2) 202298 which means half are "on" half are "off"
    (loop [steps 0
           to-go (- 202300 2)]
-     (if (> to-go 2)
+     (if (not (neg? to-go))
        (recur (+ steps
                  (* (/ to-go 2) on-steps)
                  (* (/ to-go 2) off-steps)
@@ -524,15 +518,15 @@
                  only-bottom-left-off)
               (- to-go 2))
 
-       ;; right to top remaining three maps
-       (+ steps only-bottom-left-off top-right-removed-on only-bottom-left-off)))
+       ;; right to top remaining map
+       (+ steps only-bottom-left-off)))
 
 
    ;; left to top
    ;; Here the final ones are 1 only-bottom-right "off", 1 remove top left "on"
    (loop [steps 0
           to-go (- 202300 2)]
-     (if (> to-go 2)
+     (if (not (neg? to-go))
        (recur (+ steps
                  (* (/ to-go 2) on-steps)
                  (* (/ to-go 2) off-steps)
@@ -540,14 +534,14 @@
                  only-bottom-right-off)
               (- to-go 2))
 
-       ;; left to top remaining three maps
-       (+ steps only-bottom-right-off top-left-removed-on only-bottom-right-off)))
+       ;; left to top remaining map
+       (+ steps only-bottom-right-off)))
 
    ;; left to bottom
    ;; Here final ones are only-top-right "off", remove-bottom-left "on"
    (loop [steps 0
           to-go (- 202300 2)]
-     (if (> to-go 2)
+     (if (not (neg? to-go))
        (recur (+ steps
                  (* (/ to-go 2) on-steps)
                  (* (/ to-go 2) off-steps)
@@ -555,14 +549,14 @@
                  only-top-right-off)
               (- to-go 2))
 
-       ;; left to bottom remaining three maps
-       (+ steps only-top-right-off bottom-left-removed-on only-top-right-off)))
+       ;; left to bottom remaining map
+       (+ steps only-top-right-off)))
 
    ;; right to bottom
    ;; rightmost two are now remove bottom right "on" and only-top-left "off"
    (loop [steps 0
           to-go (- 202300 2)]
-     (if (> to-go 2)
+     (if (not (neg? to-go))
        (recur (+ steps
                  (* (/ to-go 2) on-steps)
                  (* (/ to-go 2) off-steps)
@@ -570,10 +564,13 @@
                  only-top-left-off)
               (- to-go 2))
 
-       ;; right to bottom remaining three maps
-       (+ steps only-top-left-off bottom-right-removed-on only-top-left-off)))
+       ;; right to bottom remaining map
+       (+ steps only-top-right-off)))
 
    ))
+
+;; 312798177808091 ;; No, wtf?
+
 
 ;; 312798177716352 ;; NO!
 
