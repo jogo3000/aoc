@@ -395,23 +395,25 @@
 
 ;; Let's see if we can find our way to the exit and count correct steps using
 ;; this
-
 (defn find-scenic-route-recursive-network [network visited pos end weight]
   (if (= pos end) weight
       (let [exits ((:network network) pos)
             visited' (conj visited pos)
             valid-exits (remove #(visited' (:node %)) exits)]
         (if-not (seq valid-exits) 0 ;; Not at end, no valid exits worth zilch
-                (->> valid-exits
-                     (reduce (fn [acc exit]
-                               (max acc
-                                    (find-scenic-route-recursive-network
-                                     network
-                                     (conj visited' (:node exit))
-                                     (:node exit)
-                                     end
-                                     (+ weight (:weight exit)))))
-                             weight))))))
+                (let [best-subweight
+                      (->> valid-exits
+                           (reduce (fn [acc exit]
+                                     (max acc
+                                          (find-scenic-route-recursive-network
+                                           network
+                                           (conj visited' (:node exit))
+                                           (:node exit)
+                                           end
+                                           (+ weight (:weight exit)))))
+                                   weight))]
+                  (if (> best-subweight weight) best-subweight
+                      0))))))
 
 (let [nw (to-network (remove-slopes sample-input))]
   (find-scenic-route-recursive-network nw #{} (:start nw) (:end nw) 0)) ; 154, works
@@ -445,11 +447,4 @@
       end (:end nw)]
   (find-scenic-route-recursive-network nw #{start} start end 0))
 
-;; 6531 too high still?
-;; 6681 too high? This means that it either makes some routes not allowed or
-;; counts the results wrong
-
-;; But it is fast enough to do the job.
-
-(count (filter (partial = \.) (remove-slopes puzzle-input)))
-;; 9438 Is the amount of room in the map, so 6681 seems quite high. Though not impossibly so
+;; 6502 And that's it. Thanks for watching!
