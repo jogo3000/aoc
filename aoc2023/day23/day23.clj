@@ -276,4 +276,74 @@
 
 #_(find-scenic-route-queued-pessimistic slopeless-puzzle-map
                                       (start slopeless-puzzle-map)
-                                      (end slopeless-puzzle-map))
+                                      (end slopeless-puzzle-map)) ;; Hangs, increase smarts
+
+;; we are probably looking at routes that can't reach the end as well In order
+;; to avoid that the evaluator needs to check if the end position is included in
+;; the route potential
+
+(defn realistically-evaluate-route-potential [m visited pos end]
+  (loop [moves (possible-moves m visited pos)
+         visited visited]
+    (if (empty? moves)
+      (if (contains? visited end) ;; Check if end is included in the potential route
+        (count visited)
+        0)
+      (let [visited' (into visited moves)
+            new-moves (remove visited moves)]
+        (recur (mapcat (partial possible-moves m visited') new-moves) visited')))))
+
+;; make sure this works for a closed loop
+(let [m (parse-input "#.###
+#.##.
+#..#.
+##.##
+.#..#
+.##.#")
+      start (start m)
+      end (end m)]
+  (realistically-evaluate-route-potential m
+                                          #{start (north end)} ;; a blocked route
+                                          start end)) ; 0 seems to work
+
+
+(defn find-scenic-route-queued-more-pessimistic [m start end]
+  (let [queue (ArrayDeque.)]
+    (.add queue (->Task #{start} start))
+    (loop [best 0]
+      (if (.isEmpty queue)
+        best
+        (recur
+         (max best
+              (let [task (.pop queue)]
+                ;; We still want to follow path to the next crossroads
+                (loop [pos (:pos task)
+                       visited (:visited task)]
+                  (let [next-moves (possible-moves m visited pos)
+                        movescount (count next-moves)]
+                    (cond
+                      (= end pos) (dec (count visited)) ;; dec to account for the starting pos in the visited list
+                      (zero? movescount) 0 ;; Not in goal, checked before
+                      (= 1 movescount) (let [move (first next-moves)]
+                                         (recur move (conj visited move)))
+                      :else
+                      (do
+                        (doseq [move next-moves]
+                          (let [visited' (conj visited move)]
+                            ;; Only add if the route has potential to beat the best found
+                            (when (> (realistically-evaluate-route-potential m visited' move end) best)
+                              (.add queue (->Task visited' move)))))
+                        0 ;; Not at goal yet!
+                        )))))))))))
+
+#_(find-scenic-route-queued-more-pessimistic puzzle-map
+                                           (start puzzle-map)
+                                           (end puzzle-map))
+
+;; 2170 produces same output for the first puzzle, great. Don't think for a moment I did that as a mistake
+
+#_(find-scenic-route-queued-more-pessimistic slopeless-puzzle-map
+                                           (start slopeless-puzzle-map)
+                                           (end slopeless-puzzle-map))
+
+;; The engine needs more juice cap'n!
