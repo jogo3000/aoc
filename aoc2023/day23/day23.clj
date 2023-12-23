@@ -347,3 +347,106 @@
                                            (end slopeless-puzzle-map))
 
 ;; The engine needs more juice cap'n!
+
+;; OK OK Fine, I will parse the map into a network, jeez
+
+;; For this we want the crossroads, and their exits. Follow the exits until another crossroad is found. Edge length needs to be stored as well
+
+(defrecord Edge [start end weight])
+
+(defn to-edges [input]
+  (let [m input
+        start (start m)
+        end (end m)
+        forks (into #{[start [(south start)]] ;; start and one exit south
+                      [end [(north end)]]     ;; end and one exit north
+                      } (crossroads m))
+        nodes (into #{} (map first forks))]
+    (into #{}
+          (mapcat (fn [[node exits]]
+                    (mapv (fn [exit]
+                            (loop [pos exit
+                                   visited #{node exit}
+                                   weight 1]
+                              (if (= pos node) ;; found a loop, valuable info!
+                                (->Edge node node weight)
+                                (let [next-pos (first (possible-moves m visited pos))]
+                                  (if
+                                      ;; found a new connection
+                                      (contains? nodes next-pos)
+                                    (->Edge node next-pos (inc weight))
+
+                                    ;; Keep following
+                                    (recur next-pos (conj visited next-pos) (inc weight))))))) exits)))
+          forks)))
+
+(defrecord Exit [node weight])
+
+(defrecord NetworkMap [network start end])
+
+(defn to-network [input]
+  (let [m (parse-input input)]
+    (->NetworkMap
+     (->> (to-edges m)
+          (map (fn [e] {(:start e) [(->Exit (:end e) (:weight e))]}))
+          (apply merge-with into))
+     (start m)
+     (end m))))
+
+;; Let's see if we can find our way to the exit and count correct steps using
+;; this
+
+(defn find-scenic-route-recursive-network [network visited pos end weight]
+  (if (= pos end) weight
+      (let [exits ((:network network) pos)]
+        (reduce (fn [acc exit]
+                  (if (contains? visited (:node exit))
+                    acc
+                    (max acc
+                         (find-scenic-route-recursive-network
+                          network
+                          (conj visited (:node exit))
+                          (:node exit)
+                          end
+                          (+ weight (:weight exit))))))
+                weight
+                exits))))
+
+(let [nw (to-network (remove-slopes sample-input))]
+  (find-scenic-route-recursive-network nw #{} (:start nw) (:end nw) 0)) ; 154, works
+
+;; Well, can _this_ handle the real puzzle? I think it is time to find out how
+;; many loops there are
+
+;; Make a graphviz again
+
+(let [drawn? (atom #{})]
+  (doseq [node
+          (->> (to-network (remove-slopes puzzle-input))
+               :network
+               )]
+    (doseq [exit (second node)]
+      (let [start (first node)
+            end (:node exit)
+            relation #{start end}]
+        (when-not (contains? @drawn? relation)
+          (swap! drawn? conj relation)
+          (println (format "node%dx%d" (ffirst node) (second (first node)))
+                   " -- " (format "node%dx%d" (first (:node exit)) (second (:node exit)))
+                   ";"
+                   ))))))
+
+;; Based on the output, the loops can be hard to detect visually
+
+;; Well just try to do it recursively first
+(let [nw (to-network (remove-slopes puzzle-input))
+      start (:start nw)
+      end (:end nw)]
+  (find-scenic-route-recursive-network nw #{start} start end 0))
+;; 6681 too high? This means that it either makes some routes not allowed or
+;; counts the results wrong
+
+;; But it is fast enough to do the job.
+
+(count (filter (partial = \.) (remove-slopes puzzle-input)))
+;; 9438 Is the amount of room in the map, so 6681 seems quite high. Though not impossibly so
