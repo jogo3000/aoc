@@ -217,4 +217,65 @@
 ;; The first problem I noticed with the implementation that it probably spends
 ;; time evaluating paths that are proven to be pointless, it can never reach a
 ;; higher score. But how to identify that? Step away from the computer for a sec
-;; to tink
+;; to think
+
+;; Is this a branch & cut algorithm? Well I'm gonna stop assigning tasks to the
+;; queue if it is clear that they can't find a longer route. For evaluating that
+;; I will greate a _fill_ based algorithm
+(defn evaluate-route-potential [m visited pos]
+  (loop [moves (possible-moves m visited pos)
+         visited visited]
+    (if (empty? moves)
+      (count visited)
+      (let [visited' (into visited moves)
+            new-moves (remove visited moves)]
+        (recur (mapcat (partial possible-moves m visited') new-moves) visited')))))
+
+(evaluate-route-potential sample-map #{(start sample-map)} (start sample-map)) ; 213 but let's check that to make sure
+
+(- ;; subtract from whole map
+ (* (count (:m sample-map))
+    (count (first (:m sample-map))))
+ ;; all forests
+ (count (filter #(= % forest) sample-input))) ; 213 yeah, seems to work
+
+;; Now for the pessimistic queued route evaluator
+
+(defn find-scenic-route-queued-pessimistic [m start end]
+  (let [queue (ArrayDeque.)]
+    (.add queue (->Task #{start} start))
+    (loop [best 0]
+      (if (.isEmpty queue)
+        best
+        (recur
+         (max best
+              (let [task (.pop queue)]
+                ;; We still want to follow path to the next crossroads
+                (loop [pos (:pos task)
+                       visited (:visited task)]
+                  (let [next-moves (possible-moves m visited pos)
+                        movescount (count next-moves)]
+                    (cond
+                      (= end pos) (dec (count visited)) ;; dec to account for the starting pos in the visited list
+                      (zero? movescount) 0 ;; Not in goal, checked before
+                      (= 1 movescount) (let [move (first next-moves)]
+                                         (recur move (conj visited move)))
+                      :else
+                      (do
+                        (doseq [move next-moves]
+                          (let [visited' (conj visited move)]
+                            ;; Only add if the route has potential to beat the best found
+                            (when (>= (evaluate-route-potential m visited' move) best)
+                              (.add queue (->Task visited' move)))))
+                        0 ;; Not at goal yet!
+                        )))))))))))
+
+(find-scenic-route-queued-pessimistic sample-map
+                                      (start sample-map)
+                                      (end sample-map)) ; 94, still works
+
+(find-scenic-route-queued-pessimistic puzzle-map
+                                      (start puzzle-map)
+                                      (end puzzle-map))
+;; 2170 is the produced answer but it turns out to be too low
+;; It was pretty fast so there is likely a small problem with this
