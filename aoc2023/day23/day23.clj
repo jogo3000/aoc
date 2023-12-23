@@ -398,14 +398,15 @@
 
 (defn find-scenic-route-recursive-network [network visited pos end weight]
   (if (= pos end) weight
-      (let [exits ((:network network) pos)]
+      (let [exits ((:network network) pos)
+            visited' (conj visited pos)]
         (reduce (fn [acc exit]
-                  (if (contains? visited (:node exit))
+                  (if (contains? visited' (:node exit))
                     acc
                     (max acc
                          (find-scenic-route-recursive-network
                           network
-                          (conj visited (:node exit))
+                          (conj visited' (:node exit))
                           (:node exit)
                           end
                           (+ weight (:weight exit))))))
