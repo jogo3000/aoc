@@ -270,12 +270,10 @@
                         0 ;; Not at goal yet!
                         )))))))))))
 
-(find-scenic-route-queued-pessimistic sample-map
-                                      (start sample-map)
-                                      (end sample-map)) ; 94, still works
+(find-scenic-route-queued-pessimistic slopeless-sample-map
+                                      (start slopeless-sample-map)
+                                      (end slopeless-sample-map)); 154, works
 
-(find-scenic-route-queued-pessimistic puzzle-map
-                                      (start puzzle-map)
-                                      (end puzzle-map))
-;; 2170 is the produced answer but it turns out to be too low
-;; It was pretty fast so there is likely a small problem with this
+#_(find-scenic-route-queued-pessimistic slopeless-puzzle-map
+                                      (start slopeless-puzzle-map)
+                                      (end slopeless-puzzle-map))
