@@ -188,3 +188,33 @@
 (find-scenic-route-queued puzzle-map
                           (start puzzle-map)
                           (end puzzle-map)) ; 2170 Correct!
+
+;; Part deux For this part, the slopes need to be ignored. So I need
+;; another "possible moves" rule. Or do I? I can just replace all slopes with
+;; paths
+
+(defn remove-slopes [s]
+  (str/replace s (re-pattern (str \[ \\ north-slope ;; Need to escape the ^ character, that's why the \\ is there
+                                  south-slope
+                                  east-slope
+                                  west-slope \])) "."))
+
+(def slopeless-sample-map (->> sample-input remove-slopes parse-input))
+
+(find-scenic-route-queued slopeless-sample-map
+                          (start slopeless-sample-map)
+                          (end slopeless-sample-map)) ; 154, works
+
+;; Now for the big fish
+
+(def slopeless-puzzle-map (->> puzzle-input remove-slopes parse-input))
+
+#_(find-scenic-route-queued slopeless-puzzle-map
+                          (start slopeless-puzzle-map)
+                          (end slopeless-puzzle-map)) ;; hangs, need more smarts
+
+
+;; The first problem I noticed with the implementation that it probably spends
+;; time evaluating paths that are proven to be pointless, it can never reach a
+;; higher score. But how to identify that? Step away from the computer for a sec
+;; to tink
