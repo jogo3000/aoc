@@ -14,7 +14,7 @@
 
 (defn parse-hailstone-coordinates [row]
   (->> (str/split row #"[,@\s]+")
-       (map #(BigDecimal. %))
+       (map parse-long)
        (apply ->Hailstone)))
 
 (defn parse-input [input]
@@ -22,10 +22,9 @@
 
 (parse-input sample-input)
 
-(def sample-boundaries (update-vals {:min-x 7 :max-x 27
-                                     :min-y 7 :max-y 27
-                                     :min-z 7 :max-z 27}
-                                    #(BigDecimal/valueOf %)))
+(def sample-boundaries {:min-x 7 :max-x 27
+                        :min-y 7 :max-y 27
+                        :min-z 7 :max-z 27})
 
 ;; how many checks I have to do?
 (defn estimate-path-checks [hailstones]
@@ -85,15 +84,9 @@
 ;; y = kx + b
 ;; y - kx -b = 0 ;; This could work as a basis of solving the equation pair
 
-(defn divide [a b]
-  (try (.divide a b)
-       (catch ArithmeticException _
-         (BigDecimal/valueOf (/ (double a) (double b)))
-         #_(.divide a b 6 BigDecimal/ROUND_HALF_UP))))
-
 (defn to-line [h]
-  (let [k (divide (:vy h) (:vx h))
-        c (.subtract (.multiply k (:px h)) (:py h))]
+  (let [k (/ (:vy h) (:vx h))
+        c (- (* k (:px h)) (:py h))]
     {:y-factor 1
      :x-factor k
      :c-factor c}))
@@ -115,20 +108,20 @@
   (let [lcm-x (lcm (:x-factor l1) (:x-factor l2))
         [la lb] (sort-by :x-factor [l1 l2])
         x-equalized-la
-        (update-vals la #(* (divide lcm-x (:x-factor la)) %))
+        (update-vals la #(* (/ lcm-x (:x-factor la)) %))
         x-equalized-lb (if (and (pos? (:x-factor x-equalized-la))
                                 (pos? (:x-factor lb)))
-                         (update-vals lb #(* -1M %))
+                         (update-vals lb #(* -1 %))
                          lb)
         y (let [{:keys [y-factor c-factor]} (merge-with + x-equalized-la x-equalized-lb)]
-            (divide (- c-factor) y-factor))
+            (/ (- c-factor) y-factor))
 
         y-equalized-la
         la
-        y-equalized-lb (update-vals lb #(* -1M %))
+        y-equalized-lb (update-vals lb #(* -1 %))
 
         x (let [{:keys [x-factor c-factor]} (merge-with + y-equalized-la y-equalized-lb)]
-            (divide (- c-factor) (- x-factor)))]
+            (/ (- c-factor) (- x-factor)))]
     [x y]))
 
 (defn point-in-future? [h x y]
@@ -140,12 +133,26 @@
          (> y (:py h))
          (< y (:py h)))))
 
+(defn divide [a b]
+  (try (.divide a b)
+       (catch ArithmeticException _
+         #_(BigDecimal/valueOf (/ (double a) (double b)))
+         (.divide a b 6 BigDecimal/ROUND_HALF_UP))))
+
+(defn round-for-comparison [a]
+  (if-not (ratio? a)
+    a
+    (double a)
+    #_(divide (numerator a) (denominator a))))
+
 (defn hailstones-paths-cross-within-area? [area h1 h2]
   (let [l1 (to-line h1)
         l2 (to-line h2)]
     (and (not (= (:x-factor l1) (:x-factor l2))) ;; they can't be parallel
          (let [[x y :as _cross-point]
-               (solve-equation-pair l1 l2)]
+               (solve-equation-pair l1 l2)
+               x (round-for-comparison x)
+               y (round-for-comparison y)]
            (try
              (and (point-in-future? h1 x y)
                   (point-in-future? h2 x y)
@@ -168,7 +175,7 @@
 
 (count-potentially-crossing-hailstones-2d sample-input sample-boundaries)
 
-(count-potentially-crossing-hailstones-2d puzzle-input puzzle-boundaries) ; 955
+(count-potentially-crossing-hailstones-2d puzzle-input puzzle-boundaries)
 
 (let [[h1 h2] (take 2 (parse-input sample-input))]
   (hailstones-paths-cross-within-area? sample-boundaries h1 h2))
