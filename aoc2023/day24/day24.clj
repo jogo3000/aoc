@@ -82,9 +82,9 @@
 (defn to-line [h]
   (let [k (/ (:vy h) (:vx h))
         c (- (* k (:px h)) (:py h))]
-    {:y-factor (double 1)
-     :x-factor (double k)
-     :c-factor (double c)}))
+    {:y-factor 1
+     :x-factor k
+     :c-factor c}))
 
 (defn gcd [a b]
   (loop [a a
@@ -122,18 +122,31 @@
 (defn hailstones-paths-cross-within-area? [area h1 h2]
   (let [l1 (to-line h1)
         l2 (to-line h2)]
-    (and (not (= (abs (:x-factor l1)) (abs (:x-factor l2)))) ;; they can't be parallel
+    (and (not (= (:x-factor l1) (:x-factor l2))) ;; they can't be parallel
          (let [[x y :as _cross-point]
                (solve-equation-pair l1 l2)]
-           (and (<= (:min-x area) x (:max-x area))
-                (<= (:min-y area) y (:max-y area)))))))
+           (try
+             (and (<= (:min-x area) (double x) (:max-x area))
+                  (<= (:min-y area) (double y) (:max-y area)))
+             (catch ArithmeticException _
+               (println x y)))))))
 
-(let [hailstones (vec (parse-input sample-input))]
-  (for [h1 (range (count hailstones))]
-    (for [h2 (range (inc h1) (count hailstones))]
-      (do
-        (println "A: " (get hailstones h1))
-        (println "B: " (get hailstones h2))
-        (println "crosses: " (hailstones-paths-cross-within-area? sample-boundaries
-                                                                  (get hailstones h1)
-                                                                  (get hailstones h2)))))))
+(defn count-potentially-crossing-hailstones-2d [input boundaries]
+  (let [hailstones (vec (parse-input input))]
+    (count
+     (into []
+           (mapcat identity
+                   (for [h1 (range (count hailstones))]
+                     (for [h2 (range (inc h1) (count hailstones))
+                           :when (hailstones-paths-cross-within-area? boundaries
+                                                                      (get hailstones h1)
+                                                                      (get hailstones h2))]
+                       [h1 h2])))))))
+
+(count-potentially-crossing-hailstones-2d sample-input sample-boundaries)
+
+(count-potentially-crossing-hailstones-2d puzzle-input puzzle-boundaries)
+
+;; 5749 -- got rid of some rounding errors
+
+;; 5638 too low? Maybe rounding errors?
