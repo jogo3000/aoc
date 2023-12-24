@@ -147,6 +147,11 @@
 
 (count-potentially-crossing-hailstones-2d puzzle-input puzzle-boundaries)
 
+(let [[h1 h2] (take 2 (parse-input sample-input))]
+  (hailstones-paths-cross-within-area? sample-boundaries h1 h2))
+
 ;; 5749 -- got rid of some rounding errors
 
 ;; 5638 too low? Maybe rounding errors?
+
+(.divide (bigdec 43) (bigdec 3) 3 BigDecimal/ROUND_HALF_UP)
