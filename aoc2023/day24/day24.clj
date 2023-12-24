@@ -235,6 +235,93 @@
 (count-potentially-crossing-hailstones-2d puzzle-input puzzle-boundaries) ; 12783
 
 
-;; Maybe I'm getting values from the past now
-;; 5749 -- got rid of some rounding errors
-;; 5638 too low? Maybe rounding errors?
+;; part deux
+
+;; Ok, so we need to find a beam that would hit all of the rocks, z-dimension
+;; included. This seems daunting, but I suppose I could find beams that would
+;; hit a pair of hailstones and then count off every one that wouldn't hit the
+;; rest of them?
+
+;; We need to make the z-included hit detection as well, though. Let's start
+;; with that. Here goes.
+
+;; Example that would hit Hailstone 1
+(defn solve-equation-pair-3d [h1 h2]
+  (let [l1 (to-line h1)
+        l2 (to-line h2)]
+    (if (= (:x-factor l1) (:x-factor l2)) ;; parallel
+      nil
+      (let [[x y] (solve-equation-pair l1 l2)
+            l3 (to-line (->Hailstone (:py h1) (:pz h1) nil (:vy h1) (:vz h1) nil))
+            l4 (to-line (->Hailstone (:py h2) (:pz h2) nil (:vy h2) (:vz h2) nil))]
+        (if (= (:x-factor l3) (:x-factor l4))
+          nil
+          (let [[y' z] (solve-equation-pair l3 l4)]
+
+            (assert (= y y') "These should match, otherwise it doesn't work")
+            [x y z]))))))
+
+(solve-equation-pair-3d
+ (->Hailstone 19 13 30 -2 1 -2)
+ (->Hailstone 24 13 10 -3 1  2)) ; [9N 18N 20] This seems to work. What about if it doesn't hit?
+
+(solve-equation-pair-3d
+ (->Hailstone 19 13 30 -2 -1 -2)
+ (->Hailstone 18, 19, 22 -1, -1, -2)) ; nil works, they shouldn't hit based on the puzzle description
+
+;; Example: If a straight line is passing through the two fixed points in the
+;; 3-dimensional whose position coordinates are P (2, 3, 5) and Q (4, 6, 12)
+;; then its cartesian equation using the two-point form is given by
+
+;; l = (4 – 2), m = (6 – 3), n = (12 – 5)
+
+;; l = 2, m = 3, n = 7
+
+;; Choosing the point P (2, 3, 5)
+
+;; The required equation of the line
+
+;; L : (x – 2) / 2 = (y – 3) /  3 = (z – 5) / 7
+
+
+(defn beam-between [h1 h2 dt]
+  (let [l (- (:px h2) (:px h1))
+        m (- (:py h2) (:py h1))
+        n (- (:pz h2) (:pz h2))]
+    (->Hailstone (:px h1) (:py h1) (:pz h1) (/ l dt) (/ m dt) (/ n dt))))
+
+;; This has the problem that it doesn't take into account the starting
+;; point... But I think I will burn that bridge when I get there. Assuming this
+;; can even find a line that would cross all the paths, I could backtrack to
+;; find the points and determine the starting point from there
+
+;; I really hope going tick by tick is enough
+(defn move-hailstone [h]
+  (-> h
+      (update :px + (:vx h))
+      (update :py + (:vy h))
+      (update :pz + (:vz h))))
+
+;; Desired result 24, 13, 10 and velocity -3, 1, 2
+
+(let [hailstones (vec (parse-input sample-input))
+      c (count hailstones)]
+  (loop [dt 1
+         hailstones-path [hailstones (mapv move-hailstone hailstones)]]
+    (if (> dt 100) :fail
+        (let [hailstones' (last hailstones-path)
+              candidates
+              (remove
+               nil?
+               (mapcat identity
+                       (for [i (range c)]
+                         (for [j (range (inc i) c)]
+                           (let [candidate-beam
+                                 (beam-between (get hailstones i)
+                                               (get-in hailstones-path [dt j]) dt)]
+                             (when (and (pos? (:vx candidate-beam))
+                                        (pos? (:vy candidate-beam))
+                                        (pos? (:vz candidate-beam)))
+                               (every? #(solve-equation-pair-3d candidate-beam %) hailstones)))))))]
+          (if (seq candidates) candidates
+              (recur (inc dt) (conj hailstones-path (mapv move-hailstone hailstones))))))))
