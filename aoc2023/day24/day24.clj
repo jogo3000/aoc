@@ -79,12 +79,28 @@
 ;; y = kx + b
 ;; y - kx -b = 0 ;; This could work as a basis of solving the equation pair
 
+;; y − y1 = m(x − x1)
+;; y - y1 - m(x - x1) = 0
+;; y - y1 - (mx - mx1) = 0
+;; y - mx - y1 + mx1 = 0
+;; y - mx + mx1 - y1 = 0
+
+;; y = mx - mx1 + y1
+;; y - kx + c = 0
+
+(defn line-x->y [l x]
+  (+ (* (:x-factor l) x)
+     (:c-factor l)))
+
 (defn to-line [h]
   (let [k (/ (:vy h) (:vx h))
-        c (- (* k (:px h)) (:py h))]
+        c (- (:py h) (* k (:px h)))]
     {:y-factor 1
      :x-factor k
      :c-factor c}))
+
+(line-x->y (to-line #day24.Hailstone{:px 19, :py 13, :pz 30, :vx -2, :vy 1, :vz -2})
+           19) ;;13N
 
 (defn gcd [a b]
   (loop [a a
@@ -99,25 +115,66 @@
        (if (and (neg? a) (neg? b))
          (- gcd) gcd))))
 
+;; y - kx - c = 0 : * l
+;; y - jx - d = 0
+
+;; -ly + jx - lc = 0
+;;   y - jx + d  = 0
+
+;; (1 - l)y + (d - lc) = 0
+;; (1 - l)y = - (d - lc)
+;; y = - (d - lc) / (1 - l)
+
 (defn solve-equation-pair [l1 l2]
-  (let [lcm-x (lcm (:x-factor l1) (:x-factor l2))
-        [la lb] (sort-by :x-factor [l1 l2])
+  (let [lcm-x (lcm (abs (:x-factor l1)) (abs (:x-factor l2)))
+        [la lb] (sort-by (comp abs :x-factor) [l1 l2])
         x-equalized-la
         (update-vals la #(* (/ lcm-x (:x-factor la)) %))
-        x-equalized-lb (if (and (pos? (:x-factor x-equalized-la))
-                                (pos? (:x-factor lb)))
-                         (update-vals lb #(* -1 %))
-                         lb)
+        x-equalized-lb
+        (update-vals lb #(* (/ lcm-x (:x-factor lb)) %))
+        same-sign? (or (and (pos? (:x-factor x-equalized-la))
+                           (pos? (:x-factor x-equalized-lb)))
+                      (and (neg? (:x-factor x-equalized-la))
+                           (neg? (:x-factor x-equalized-lb))))
+        x-equalized-lb (if same-sign?
+                         (update-vals x-equalized-lb #(* -1 %))
+                         x-equalized-lb)
         y (let [{:keys [y-factor c-factor]} (merge-with + x-equalized-la x-equalized-lb)]
-            (/ (- c-factor) y-factor))
+            (/ c-factor
+               y-factor))
 
         y-equalized-la
         la
         y-equalized-lb (update-vals lb #(* -1 %))
 
         x (let [{:keys [x-factor c-factor]} (merge-with + y-equalized-la y-equalized-lb)]
-            (/ (- c-factor) (- x-factor)))]
+            (/ c-factor (- x-factor)))]
     [x y]))
+
+(solve-equation-pair (to-line  #day24.Hailstone{:px 20 :py 19 :pz 25 :vx 1 :vy -5 :vz -3})
+                     (to-line #day24.Hailstone{:px 20, :py 25, :pz 34, :vx -2, :vy -2, :vz -4}))
+
+
+(line-x->y (to-line  #day24.Hailstone{:px 20 :py 19 :pz 25 :vx 1 :vy -5 :vz -3})
+           19)
+
+(line-x->y (to-line #day24.Hailstone{:px 20, :py 25, :pz 34, :vx -2, :vy -2, :vz -4})
+           20)
+
+(to-line  #day24.Hailstone{:px 20 :py 19 :pz 25 :vx 1 :vy -5 :vz -3})
+{:y-factor 1, :x-factor -5, :c-factor 119}
+
+(to-line #day24.Hailstone{:px 20, :py 25, :pz 34, :vx -2, :vy -2, :vz -4})
+{:y-factor 1, :x-factor 1, :c-factor 5} (+ 119 5) (/ 124 6)
+;; [19 -24]
+
+;; [19 47/2]
+
+;; [19 62]
+
+(let [l (to-line #day24.Hailstone{:px 20 :py 19 :pz 25 :vx 1 :vy -5 :vz -3})]
+  (line-x->y l 19)) ;; 24 - clearly not correct
+
 
 (defn round-for-comparison [a]
   (if-not (ratio? a) a
@@ -126,7 +183,27 @@
              (BigDecimal. (numerator a))
              (BigDecimal. (denominator a)))
             (catch ArithmeticException _
+              #_(println a)
               (double a)))))
+
+(defn point-in-future? [h x y]
+  ;; #day24.Hailstone{:px 19, :py 13, :pz 30, :vx -2, :vy 1, :vz -2}
+  (let [decision (and (if (pos? (:vx h))
+                        (>= x (:px h))
+                        (<= x (:px h)))
+                      (if (pos? (:vy h))
+                        (>= y (:py h))
+                        (<= y (:py h))))]
+    #_(when-not decision
+      (println "paths cross in the past for " h x y))
+    decision))
+
+(hailstones-paths-cross-within-area?
+ sample-boundaries
+ #day24.Hailstone{:px 20 :py 19 :pz 25 :vx 1 :vy -5 :vz -3}
+ #day24.Hailstone{:px 20, :py 25, :pz 34, :vx -2, :vy -2, :vz -4}
+ )
+
 
 (defn hailstones-paths-cross-within-area? [area h1 h2]
   (let [l1 (to-line h1)
@@ -136,7 +213,9 @@
                (solve-equation-pair l1 l2)
                x (round-for-comparison x)
                y (round-for-comparison y)]
-           (and (<= (:min-x area) x (:max-x area))
+           (and (point-in-future? h1 x y)
+                (point-in-future? h2 x y)
+                (<= (:min-x area) x (:max-x area))
                 (<= (:min-y area) y (:max-y area)))))))
 
 (defn count-potentially-crossing-hailstones-2d [input boundaries]
@@ -153,7 +232,8 @@
 
 (count-potentially-crossing-hailstones-2d sample-input sample-boundaries)
 
-(count-potentially-crossing-hailstones-2d puzzle-input puzzle-boundaries)
+(count-potentially-crossing-hailstones-2d puzzle-input puzzle-boundaries) ; 12783
+
 
 ;; Maybe I'm getting values from the past now
 ;; 5749 -- got rid of some rounding errors
