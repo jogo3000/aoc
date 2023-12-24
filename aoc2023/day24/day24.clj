@@ -3,7 +3,8 @@
 
 (def puzzle-input (slurp "day24/input.txt"))
 
-(def sample-input "19, 13, 30 @ -2,  1, -2
+(def sample-input
+"19, 13, 30 @ -2,  1, -2
 18, 19, 22 @ -1, -1, -2
 20, 25, 34 @ -2, -2, -4
 12, 31, 28 @ -1, -2, -1
@@ -109,11 +110,17 @@
       (min a b)
       (recur (min a b) (mod (max a b) (min a b))))))
 
+(defn greatest-common-divisor [ps]
+  (reduce gcd ps))
+
 (defn lcm [a b]
   (let [gcd (gcd (abs a) (abs b))]
     (/ (* a b)
        (if (and (neg? a) (neg? b))
          (- gcd) gcd))))
+
+(defn least-common-multiple [xs]
+  (reduce lcm xs))
 
 ;; y - kx - c = 0 : * l
 ;; y - jx - d = 0
@@ -133,9 +140,9 @@
         x-equalized-lb
         (update-vals lb #(* (/ lcm-x (:x-factor lb)) %))
         same-sign? (or (and (pos? (:x-factor x-equalized-la))
-                           (pos? (:x-factor x-equalized-lb)))
-                      (and (neg? (:x-factor x-equalized-la))
-                           (neg? (:x-factor x-equalized-lb))))
+                            (pos? (:x-factor x-equalized-lb)))
+                       (and (neg? (:x-factor x-equalized-la))
+                            (neg? (:x-factor x-equalized-lb))))
         x-equalized-lb (if same-sign?
                          (update-vals x-equalized-lb #(* -1 %))
                          x-equalized-lb)
@@ -198,7 +205,7 @@
       (println "paths cross in the past for " h x y))
     decision))
 
-(hailstones-paths-cross-within-area?
+#_(hailstones-paths-cross-within-area?
  sample-boundaries
  #day24.Hailstone{:px 20 :py 19 :pz 25 :vx 1 :vy -5 :vz -3}
  #day24.Hailstone{:px 20, :py 25, :pz 34, :vx -2, :vy -2, :vz -4}
@@ -304,24 +311,83 @@
 
 ;; Desired result 24, 13, 10 and velocity -3, 1, 2
 
-(let [hailstones (vec (parse-input sample-input))
+(defn find-candidates [hstones1 hstones2 dt]
+  (remove
+   nil?
+   (mapcat identity
+           (for [i (range (count hstones1))]
+             (for [j (range (count hstones2))
+                   :let [h1 (get hstones1 i)
+                         h2 (get hstones2 j)]
+                   :when (not= (:name h1) (:name h2))]
+               (let [candidate-beam
+                     (beam-between h1 h2 dt)]
+                 (when (and (pos? (:vx candidate-beam))
+                            (pos? (:vy candidate-beam))
+                            (pos? (:vz candidate-beam)))
+                   (every? #(solve-equation-pair-3d candidate-beam %)
+                           (remove #(or (= (:name %) (:name h1))
+                                        (= (:name %) (:name h2))) hstones1)))))))))
+
+(let [hailstones (vec (map #(assoc % name (gensym)) (parse-input sample-input)))
       c (count hailstones)]
   (loop [dt 1
          hailstones-path [hailstones (mapv move-hailstone hailstones)]]
-    (if (> dt 100) :fail
-        (let [hailstones' (last hailstones-path)
-              candidates
-              (remove
-               nil?
-               (mapcat identity
-                       (for [i (range c)]
-                         (for [j (range (inc i) c)]
-                           (let [candidate-beam
-                                 (beam-between (get hailstones i)
-                                               (get-in hailstones-path [dt j]) dt)]
-                             (when (and (pos? (:vx candidate-beam))
-                                        (pos? (:vy candidate-beam))
-                                        (pos? (:vz candidate-beam)))
-                               (every? #(solve-equation-pair-3d candidate-beam %) hailstones)))))))]
+    (if (> dt 10000) :fail
+        (let [candidates
+              (find-candidates (get hailstones-path 0)
+                               (get hailstones-path dt)
+                               dt)]
           (if (seq candidates) candidates
               (recur (inc dt) (conj hailstones-path (mapv move-hailstone hailstones))))))))
+
+
+(def sample-hailstones (parse-input sample-input))
+
+;; Can I solve it in one dimension at a time?
+(defn max-x [hs]
+  (reduce (fn [acc h]
+            (max-key :px acc h)) hs))
+
+(defn max-vx [hs]
+  (reduce (fn [acc h]
+            (max-key :vx acc h)) hs))
+
+(defn min-x [hs]
+  (reduce (fn [acc h]
+            (min-key :px acc h)) hs))
+
+(defn distance [[x1 y1] [x2 y2]]
+  (Math/sqrt (+ (Math/pow (double (- x2 x1)) (double 2)) (Math/pow (double (- y2 y1)) (double 2)))))
+
+;; I know this should work with max-x so start with that
+(let [projected-hailstones
+      (map (fn [hs]
+             (->Hailstone (:px hs) 0 0 (:vx hs) 1 0)) sample-hailstones)]
+  (loop [search-x 24 #_(inc (:px (max-x sample-hailstones)))
+         dx (dec (:vx (max-vx projected-hailstones)))]
+    (Thread/sleep 100)
+    (println search-x dx)
+    (cond
+      (= dx (- search-x)) :fail1
+      (zero? dx) (recur search-x (dec dx))
+      (not-any? #(> (:vx %) dx) projected-hailstones) :fail2
+      (some #(= dx (:vx %)) projected-hailstones)
+      (recur search-x (dec dx))
+
+      :else
+      (let [candidate-hs (->Hailstone search-x 0 0 dx 1 0)
+            candidate (to-line candidate-hs)
+            intersections
+            (sort (map #(solve-equation-pair candidate (to-line %)) projected-hailstones))
+            _ (println intersections)
+            distances (map #(apply distance %) (partition 2 1 intersections))
+            _ (println distances)
+            gcd
+            (greatest-common-divisor distances)]
+        (if (> gcd 1) candidate-hs
+            (recur search-x (dec dx)))))))
+
+
+;; 3.1622776601683795 assume if this is larger than zero it is a good candidate
+;; (3.1622776601683795 3.1622776601683795 3.1622776601683795 6.324555320336759)
