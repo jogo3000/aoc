@@ -119,17 +119,25 @@
             (/ (- c-factor) (- x-factor)))]
     [x y]))
 
+(defn round-for-comparison [a]
+  (if-not (ratio? a) a
+          (try
+            (.divide
+             (BigDecimal. (numerator a))
+             (BigDecimal. (denominator a)))
+            (catch ArithmeticException _
+              (double a)))))
+
 (defn hailstones-paths-cross-within-area? [area h1 h2]
   (let [l1 (to-line h1)
         l2 (to-line h2)]
     (and (not (= (:x-factor l1) (:x-factor l2))) ;; they can't be parallel
          (let [[x y :as _cross-point]
-               (solve-equation-pair l1 l2)]
-           (try
-             (and (<= (:min-x area) (double x) (:max-x area))
-                  (<= (:min-y area) (double y) (:max-y area)))
-             (catch ArithmeticException _
-               (println x y)))))))
+               (solve-equation-pair l1 l2)
+               x (round-for-comparison x)
+               y (round-for-comparison y)]
+           (and (<= (:min-x area) x (:max-x area))
+                (<= (:min-y area) y (:max-y area)))))))
 
 (defn count-potentially-crossing-hailstones-2d [input boundaries]
   (let [hailstones (vec (parse-input input))]
@@ -147,6 +155,6 @@
 
 (count-potentially-crossing-hailstones-2d puzzle-input puzzle-boundaries)
 
+;; Maybe I'm getting values from the past now
 ;; 5749 -- got rid of some rounding errors
-
 ;; 5638 too low? Maybe rounding errors?
