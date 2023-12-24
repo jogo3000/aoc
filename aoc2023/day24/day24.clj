@@ -14,14 +14,18 @@
 
 (defn parse-hailstone-coordinates [row]
   (->> (str/split row #"[,@\s]+")
-       (map parse-long)
+       (map #(BigDecimal. %))
        (apply ->Hailstone)))
 
 (defn parse-input [input]
   (->> input str/trim str/split-lines (map parse-hailstone-coordinates)))
 
-(def sample-boundaries {:min-x 7 :max-x 27
-                        :min-y 7 :max-y 27})
+(parse-input sample-input)
+
+(def sample-boundaries (update-vals {:min-x 7 :max-x 27
+                                     :min-y 7 :max-y 27
+                                     :min-z 7 :max-z 27}
+                                    #(BigDecimal/valueOf %)))
 
 ;; how many checks I have to do?
 (defn estimate-path-checks [hailstones]
@@ -47,7 +51,9 @@
 (def puzzle-boundaries {:min-x 200000000000000M
                         :max-x 400000000000000M
                         :min-y 200000000000000M
-                        :max-y 400000000000000M})
+                        :max-y 400000000000000M
+                        :min-z 200000000000000M
+                        :max-z 400000000000000M})
 
 (estimate-area-checks puzzle-boundaries) ; 40000000000000000000000000000M
 
@@ -79,9 +85,15 @@
 ;; y = kx + b
 ;; y - kx -b = 0 ;; This could work as a basis of solving the equation pair
 
+(defn divide [a b]
+  (try (.divide a b)
+       (catch ArithmeticException _
+         (BigDecimal/valueOf (/ (double a) (double b)))
+         #_(.divide a b 6 BigDecimal/ROUND_HALF_UP))))
+
 (defn to-line [h]
-  (let [k (/ (:vy h) (:vx h))
-        c (- (* k (:px h)) (:py h))]
+  (let [k (divide (:vy h) (:vx h))
+        c (.subtract (.multiply k (:px h)) (:py h))]
     {:y-factor 1
      :x-factor k
      :c-factor c}))
@@ -103,21 +115,30 @@
   (let [lcm-x (lcm (:x-factor l1) (:x-factor l2))
         [la lb] (sort-by :x-factor [l1 l2])
         x-equalized-la
-        (update-vals la #(* (/ lcm-x (:x-factor la)) %))
+        (update-vals la #(* (divide lcm-x (:x-factor la)) %))
         x-equalized-lb (if (and (pos? (:x-factor x-equalized-la))
                                 (pos? (:x-factor lb)))
-                         (update-vals lb #(* -1 %))
+                         (update-vals lb #(* -1M %))
                          lb)
         y (let [{:keys [y-factor c-factor]} (merge-with + x-equalized-la x-equalized-lb)]
-            (/ (- c-factor) y-factor))
+            (divide (- c-factor) y-factor))
 
         y-equalized-la
         la
-        y-equalized-lb (update-vals lb #(* -1 %))
+        y-equalized-lb (update-vals lb #(* -1M %))
 
         x (let [{:keys [x-factor c-factor]} (merge-with + y-equalized-la y-equalized-lb)]
-            (/ (- c-factor) (- x-factor)))]
+            (divide (- c-factor) (- x-factor)))]
     [x y]))
+
+(defn point-in-future? [h x y]
+  ;; #day24.Hailstone{:px 19, :py 13, :pz 30, :vx -2, :vy 1, :vz -2}
+  (and (if (pos? (:vx h))
+         (> x (:px h))
+         (< x (:px h)))
+       (if (pos? (:vy h))
+         (> y (:py h))
+         (< y (:py h)))))
 
 (defn hailstones-paths-cross-within-area? [area h1 h2]
   (let [l1 (to-line h1)
@@ -126,8 +147,10 @@
          (let [[x y :as _cross-point]
                (solve-equation-pair l1 l2)]
            (try
-             (and (<= (:min-x area) (double x) (:max-x area))
-                  (<= (:min-y area) (double y) (:max-y area)))
+             (and (point-in-future? h1 x y)
+                  (point-in-future? h2 x y)
+                  (<= (:min-x area) x (:max-x area))
+                  (<= (:min-y area) y (:max-y area)))
              (catch ArithmeticException _
                (println x y)))))))
 
@@ -145,7 +168,7 @@
 
 (count-potentially-crossing-hailstones-2d sample-input sample-boundaries)
 
-(count-potentially-crossing-hailstones-2d puzzle-input puzzle-boundaries)
+(count-potentially-crossing-hailstones-2d puzzle-input puzzle-boundaries) ; 955
 
 (let [[h1 h2] (take 2 (parse-input sample-input))]
   (hailstones-paths-cross-within-area? sample-boundaries h1 h2))
@@ -153,5 +176,3 @@
 ;; 5749 -- got rid of some rounding errors
 
 ;; 5638 too low? Maybe rounding errors?
-
-(.divide (bigdec 43) (bigdec 3) 3 BigDecimal/ROUND_HALF_UP)
