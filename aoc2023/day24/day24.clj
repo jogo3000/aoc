@@ -442,7 +442,7 @@
          world-clock start-time]
     (let [rightmost (right-edge hailstones)
           others (disj (set hailstones) rightmost)]
-      (if
+      (if ;; Is there a way to identify this won't find a hit? I guess if the rock would have to travel so fast that it will be faster than some parallel lines
           ;; Many hailstones in the same position, this can't be it
           (contains? (->> others (map :px) set) (:px rightmost))
           (recur (map move-hailstone hailstones) (inc world-clock))
@@ -455,10 +455,24 @@
                     (if (contains? (->> others-next (map :px) set) (:px right-next))
                       (recur (map move-hailstone next-level) (inc relative-clock))
                       (let [candidate (beam-between rightmost right-next relative-clock)
-                            candidate-line (to-line candidate)]
-                        ;; This found a good candidate, but I still need to prove it.
-                        (map (partial solve-equation-pair candidate-line)
-                             (map to-line others-next))))))]
+                            candidate-line (to-line candidate)
+                            hit-points (map (partial solve-equation-pair candidate-line)
+                                            (map to-line others-next))]
+
+                        ;; If we find a nil, means that furthering the beam can't produce more hits
+                        (if
+                            (some nil? hit-points) nil
+
+                            (let [hit-distances (->> (into [[(:px rightmost) (:py rightmost)]])
+                                                     sort
+                                                     (partition 2 1)
+                                                     (map #(apply manhattan-distance %))
+                                                     set)]
+                              (if (> (greatest-common-divisor hit-distances) 1)
+                                candidate
+                                (recur (map move-hailstone next-level) (inc relative-clock)))))
+
+))))]
             (if candidate
               candidate
               (recur (map move-hailstone hailstones) (inc world-clock))))))
