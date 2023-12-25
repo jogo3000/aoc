@@ -1,6 +1,7 @@
 (ns day25
   (:require [clojure.string :as str]
-            [clojure.set :as set]))
+            [clojure.set :as set])
+  (:import [java.security SecureRandom]))
 
 (def sample-input "jqt: rhn xhk nvd
 rsh: frs pzl lsr
@@ -16,6 +17,8 @@ lsr: lhk
 rzs: qnr cmg lsr rsh
 frs: qnr lhk lsr
 ")
+
+(set! *warn-on-reflection* true)
 
 (defn parse-row [s]
   (let [[head & tail] (str/split s #":*\s+")]
@@ -125,7 +128,7 @@ frs: qnr lhk lsr
 
 (def puzzle-network (parse-input (slurp "day25/input.txt")))
 
-(doseq [edge sample-network]
+#_(doseq [edge sample-network]
   (let [[a b] (vec edge)]
     (println a "--" b)))
 
@@ -137,27 +140,96 @@ frs: qnr lhk lsr
 
 sample-network
 
-(defrecord KargerEdge [original edge])
+(defrecord KargerEdge [original edge contractions])
+(def ^SecureRandom random (SecureRandom.))
 
 (defn Karger [network]
   (let [edges (map #(if (= KargerEdge (type %)) %
-                        (->KargerEdge % %)) network)
-        e (rand-nth edges)
+                        (->KargerEdge % % 0)) network)
+        e (nth edges (.nextInt random (count edges)))
         connected (->> edges
                        (filter #(seq (set/intersection (:edge e) (:edge %))))
                        (remove #(= e %)))
         new-vertex (str/join (:edge e))
         new-connections (->> connected
                              (map (fn [e2]
-                                    (update e2 :edge (fn [edge]
-                                                       (conj (set/difference edge (:edge e))
-                                                             new-vertex)))))
+                                    (-> e2
+                                        (update :edge (fn [edge]
+                                                        (conj (set/difference edge (:edge e))
+                                                              new-vertex)))
+                                        (update :contractions inc))))
                              (remove #(= (count (:edge %)) 1)))]
     (-> (set edges)
         (disj e)
         (set/difference connected)
         (into new-connections))))
 
-(drop-while #(> (count %) 3) (iterate Karger sample-network))
+(defn count-vertices [network]
+  (count (reduce (fn [acc edge]
+                   (let [[a b] (vec edge)]
+                     (-> acc
+                         (conj a)
+                         (conj b))))
+                 #{} network)))
+
+(defn count-kg-vertices [network]
+  (count (reduce (fn [acc edge]
+                   (let [[a b] (vec (:edge edge))]
+                     (-> acc
+                         (conj a)
+                         (conj b))))
+                 #{} network)))
+
+#_(sort-by second
+           (frequencies
+            (mapcat identity
+                    (for [_ (range 100)]
+                      (map :original (last (take-while #(> (count-vertices %) 2) (iterate Karger sample-network))))))))
+
+;; #{"hfx" "pzl"}
+;; #{"bvb" "cmg"}
+;; #{"nvd" "jqt"}
+
+(defn do-karger [network]
+  (loop [knw (Karger network)]
+    (if (= (count-kg-vertices knw) 2)
+      (map :original knw)
+      (recur (Karger knw)))))
+
+(do-karger sample-network)
+
+(defn do-karger-until-three [network]
+  (loop []
+    (let [kgw (set (do-karger network))]
+      (if (= (count kgw) 3)
+        kgw
+        (recur)))))
+
+(do-karger-until-three sample-network)
 
 ;; Not working exactly like it should
+(let [network sample-network]
+    (loop [c 100]
+      (println "iterations to go" c)
+      (if (<= c 0) :fail
+          (let [candidates
+                (do-karger-until-three network)]
+            (assert (> (count candidates) 0))
+            (if-let [result
+                     (->> (subsets 3 candidates)
+                          (some (fn [cands]
+                                  (let [pared-network (set/difference network cands)
+                                        pared-size (count pared-network)
+                                        network-size (count network)
+                                        _ (assert (< (count pared-network) (count network)))
+                                        subnets (find-segments pared-network)]
+                                    (when (>= (count subnets) 2)
+                                      subnets))))
+                          subnet-sizes
+                          not-empty)]
+              result
+              (recur (dec c)))))))
+
+
+
+#_(Karger puzzle-network)
