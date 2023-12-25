@@ -199,12 +199,40 @@ sample-network
       (map :original knw)
       (recur (Karger knw)))))
 
+(defn travel-network-kgs [network starting-point]
+  (loop [queue (list starting-point)
+         visited #{}]
+    (if (empty? queue)
+      visited
+      (let [[a b] (vec (:edge (first queue)))
+            connections-from-a (into #{}
+                                     (comp
+                                      (filter (comp #(contains? % a) :edge))
+                                      (remove #(visited %)))
+                                     network)
+            all-connections (into connections-from-a
+                                  (comp
+                                   (filter (comp #(contains? % b) :edge))
+                                   (remove #(visited %)))
+                                  network)]
+        (recur (into (rest queue)
+                     all-connections)
+               (into visited
+                     all-connections))))))
+
+(defn find-segments-kgs [network]
+  (loop [network network
+         segments #{}]
+    (if (empty? network) segments
+        (let [subnet (travel-network-kgs network (first network))]
+          (recur (set/difference network subnet)
+                 (conj segments subnet))))))
+
 (defn find-answer-karger-stein [network]
-  (->>
-   (some #(let [subnets (find-segments (set/difference network (set %)))]
-            (when (= 2 (count subnets))
-              %))
-         (subsets 3 network))))
+  (->> (subsets 3 network)
+   (map (juxt identity #(find-segments-kgs (set/difference network (set %)))))
+   (reduce (fn [a b]
+             (max-key (comp count second) a b)))))
 
 (defn do-karger-stein
   ([network]
@@ -213,14 +241,13 @@ sample-network
      (do-karger-stein network (/ (count-kg-vertices network) (Math/sqrt 2)))))
   ([network n]
    (if (< n (* 2 (Math/sqrt 2)))
-     (find-answer-karger-stein (set (map :edge network)))
+     (find-answer-karger-stein (set network))
      (loop [knw (Karger network)]
        (if-not (< (count-kg-vertices knw) n)
          (recur (Karger knw))
          (let [S1 (do-karger-stein knw)
                S2 (do-karger-stein knw)]
-           (println S1 S2)
-           (min S1 S2)))))))
+           (min-key (comp count first) S1 S2)))))))
 
 (do-karger-stein sample-network)
 
