@@ -231,6 +231,7 @@ sample-network
 (defn find-answer-karger-stein [network]
   (->> (subsets 3 network)
    (map (juxt identity #(find-segments-kgs (set/difference network (set %)))))
+   (remove #(< 2 (count (second %))))
    (reduce (fn [a b]
              (max-key (comp count second) a b)))))
 
