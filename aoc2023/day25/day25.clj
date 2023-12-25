@@ -128,7 +128,7 @@ frs: qnr lhk lsr
 
 (def puzzle-network (parse-input (slurp "day25/input.txt")))
 
-#_(doseq [edge sample-network]
+(doseq [edge puzzle-network]
   (let [[a b] (vec edge)]
     (println a "--" b)))
 
@@ -288,6 +288,21 @@ sample-network
                           not-empty)]
               result
               (recur (dec c)))))))
+
+
+;; edges found with graphviz
+;; gbc --- hxr
+;; tmt -- pnz
+;; xkz -- mvv
+
+(->> (find-segments (disj puzzle-network
+                          #{"gbc" "hxr"}
+                          #{"tmt" "pnz"}
+                          #{"xkz" "mvv"}))
+     subnet-sizes)
+
+(* 744 766) 569904
+
 
 
 
