@@ -140,28 +140,31 @@ frs: qnr lhk lsr
 
 sample-network
 
-(defrecord KargerEdge [original edge contractions])
+(defrecord KargerEdge [original edge])
 (def ^SecureRandom random (SecureRandom.))
+
+(sort-by first
+         (frequencies (take 1000 (repeatedly #(.nextInt random (count sample-network))))))
 
 (defn Karger [network]
   (let [edges (map #(if (= KargerEdge (type %)) %
-                        (->KargerEdge % % 0)) network)
+                        (->KargerEdge % %)) network)
         e (nth edges (.nextInt random (count edges)))
         connected (->> edges
                        (filter #(seq (set/intersection (:edge e) (:edge %))))
-                       (remove #(= e %)))
-        new-vertex (str/join (:edge e))
+                       (remove #(= e %))
+                       #_(remove #(= (:edge e) (:edge %))))
+        new-vertex (str (gensym))
         new-connections (->> connected
                              (map (fn [e2]
                                     (-> e2
                                         (update :edge (fn [edge]
                                                         (conj (set/difference edge (:edge e))
-                                                              new-vertex)))
-                                        (update :contractions inc))))
+                                                              new-vertex))))))
                              (remove #(= (count (:edge %)) 1)))]
     (-> (set edges)
         (disj e)
-        (set/difference connected)
+        (set/difference (set connected))
         (into new-connections))))
 
 (defn count-vertices [network]
@@ -196,7 +199,34 @@ sample-network
       (map :original knw)
       (recur (Karger knw)))))
 
-(do-karger sample-network)
+(defn find-answer-karger-stein [network]
+  (->>
+   (some #(let [subnets (find-segments (set/difference network (set %)))]
+            (when (= 2 (count subnets))
+              %))
+         (subsets 3 network))))
+
+(defn do-karger-stein
+  ([network]
+   (let [network (map #(if (= KargerEdge (type %)) %
+                           (->KargerEdge % %)) network)]
+     (do-karger-stein network (/ (count-kg-vertices network) (Math/sqrt 2)))))
+  ([network n]
+   (if (< n (* 2 (Math/sqrt 2)))
+     (find-answer-karger-stein (set (map :edge network)))
+     (loop [knw (Karger network)]
+       (if-not (< (count-kg-vertices knw) n)
+         (recur (Karger knw))
+         (let [S1 (do-karger-stein knw)
+               S2 (do-karger-stein knw)]
+           (println S1 S2)
+           (min S1 S2)))))))
+
+(do-karger-stein sample-network)
+
+(do-karger puzzle-network)
+
+(/ 1212 (Math/sqrt 2)) 857.0134187980956
 
 (defn do-karger-until-three [network]
   (loop []
@@ -204,6 +234,7 @@ sample-network
       (if (= (count kgw) 3)
         kgw
         (recur)))))
+
 
 (do-karger-until-three sample-network)
 
