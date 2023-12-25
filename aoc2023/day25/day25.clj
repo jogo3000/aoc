@@ -154,7 +154,7 @@ sample-network
                        (filter #(seq (set/intersection (:edge e) (:edge %))))
                        (remove #(= e %))
                        #_(remove #(= (:edge e) (:edge %))))
-        new-vertex (str (gensym))
+        new-vertex (str/join (vec (:edge e)) )
         new-connections (->> connected
                              (map (fn [e2]
                                     (-> e2
