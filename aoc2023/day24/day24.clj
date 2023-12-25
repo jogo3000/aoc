@@ -329,7 +329,11 @@
                            (remove #(or (= (:name %) (:name h1))
                                         (= (:name %) (:name h2))) hstones1)))))))))
 
-(let [hailstones (vec (map #(assoc % name (gensym)) (parse-input sample-input)))
+(defn name-hs [hs]
+  (map #(assoc % :name (gensym))
+       hs))
+
+#_(let [hailstones (vec (map #(assoc % name (gensym)) (parse-input sample-input)))
       c (count hailstones)]
   (loop [dt 1
          hailstones-path [hailstones (mapv move-hailstone hailstones)]]
@@ -360,34 +364,104 @@
 (defn distance [[x1 y1] [x2 y2]]
   (Math/sqrt (+ (Math/pow (double (- x2 x1)) (double 2)) (Math/pow (double (- y2 y1)) (double 2)))))
 
+(defn manhattan-distance [[x1 y1] [x2 y2]]
+  (+ (abs (- x2 x1)) (abs (- y2 y1))))
+
+(defn project-to-x-dimension [hs]
+  (->Hailstone (:px hs) 0 0 (:vx hs) 1 0))
 ;; I know this should work with max-x so start with that
-(let [projected-hailstones
-      (map (fn [hs]
-             (->Hailstone (:px hs) 0 0 (:vx hs) 1 0)) sample-hailstones)]
-  (loop [search-x 24 #_(inc (:px (max-x sample-hailstones)))
-         dx (dec (:vx (max-vx projected-hailstones)))]
-    (Thread/sleep 100)
-    (println search-x dx)
-    (cond
-      (= dx (- search-x)) :fail1
-      (zero? dx) (recur search-x (dec dx))
-      (not-any? #(> (:vx %) dx) projected-hailstones) :fail2
-      (some #(= dx (:vx %)) projected-hailstones)
-      (recur search-x (dec dx))
 
-      :else
-      (let [candidate-hs (->Hailstone search-x 0 0 dx 1 0)
-            candidate (to-line candidate-hs)
-            intersections
-            (sort (map #(solve-equation-pair candidate (to-line %)) projected-hailstones))
-            _ (println intersections)
-            distances (map #(apply distance %) (partition 2 1 intersections))
-            _ (println distances)
-            gcd
-            (greatest-common-divisor distances)]
-        (if (> gcd 1) candidate-hs
-            (recur search-x (dec dx)))))))
+(defn search-x [hailstones]
+  (let [projected-hailstones
+        (map project-to-x-dimension hailstones)]
+    (loop [search-x (inc (:px (max-x projected-hailstones)))
+           dx (dec (:vx (max-vx projected-hailstones)))]
+
+      (println search-x dx)
+      (cond
+        (= dx (- search-x)) (recur (inc search-x) (dec (:vx (max-vx projected-hailstones))))
+        (zero? dx) (recur search-x (dec dx))
+        (not-any? #(> (:vx %) dx) projected-hailstones) :fail2
+        (some #(= dx (:vx %)) projected-hailstones)
+        (recur search-x (dec dx))
+
+        :else
+        (let [candidate-hs (->Hailstone search-x 0 0 dx 1 0)
+              candidate (to-line candidate-hs)
+              intersections
+              (sort (map #(solve-equation-pair candidate (to-line %)) projected-hailstones))
+              #_ (println intersections)
+              distances (map #(apply manhattan-distance %) (partition 2 1 intersections))
+              #_ (println distances)
+              gcd (when (every? pos? distances)
+                    (greatest-common-divisor distances))]
+          (if (> (or gcd 0) 1) candidate-hs
+              (recur search-x (dec dx))))))))
 
 
-;; 3.1622776601683795 assume if this is larger than zero it is a good candidate
-;; (3.1622776601683795 3.1622776601683795 3.1622776601683795 6.324555320336759)
+(search-x sample-hailstones) ; Idea works
+
+
+#_(search-x (parse-input puzzle-input)) ; Unfortunately it is too slow for the real puzzle
+
+;; NEED to pare down search space
+
+(def x-hailstones-sample (map project-to-x-dimension sample-hailstones))
+
+(defn left-edge [hs]
+  (reduce (fn [acc h]
+            (cond
+              (< (:px acc) (:px h)) acc
+              (> (:px acc) (:px h)) h
+              :else
+              (min-key :px acc h))) hs))
+
+(defn right-edge [hs]
+  (reduce (fn [acc h]
+            (cond
+              (> (:px acc) (:px h)) acc
+              (< (:px acc) (:px h)) h
+              :else
+              (max-key :vx acc h)))
+          hs))
+
+(defn hailstones-collide? [hs]
+  (let [x-positions (into #{} (map :px hs))]
+    (< (count x-positions) (count hs))))
+
+(let [hailstones (->> sample-hailstones
+                      (map project-to-x-dimension)
+                      name-hs)
+      left (left-edge hailstones)
+      right (right-edge hailstones)
+      start-time 0]
+
+  ;; Try out the right side first, because in the sample that is where the solution is found
+
+  (loop [hailstones hailstones
+         world-clock start-time]
+    (let [rightmost (right-edge hailstones)
+          others (disj (set hailstones) rightmost)]
+      (if
+          ;; Many hailstones in the same position, this can't be it
+          (contains? (->> others (map :px) set) (:px rightmost))
+          (recur (map move-hailstone hailstones) (inc world-clock))
+
+          (let [candidate
+                (loop [next-level (map move-hailstone others)
+                       relative-clock 1]
+                  (let [right-next (right-edge next-level)
+                        others-next (disj (set next-level) right-next)]
+                    (if (contains? (->> others-next (map :px) set) (:px right-next))
+                      (recur (map move-hailstone next-level) (inc relative-clock))
+                      (let [candidate (beam-between rightmost right-next relative-clock)
+                            candidate-line (to-line candidate)]
+                        ;; This found a good candidate, but I still need to prove it.
+                        (map (partial solve-equation-pair candidate-line)
+                             (map to-line others-next))))))]
+            (if candidate
+              candidate
+              (recur (map move-hailstone hailstones) (inc world-clock))))))
+    )
+
+  )
