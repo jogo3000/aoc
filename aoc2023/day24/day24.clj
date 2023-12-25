@@ -434,7 +434,7 @@
   (let [x-positions (into #{} (map :px hs))]
     (< (count x-positions) (count hs))))
 
-(let [hailstones (->> sample-hailstones
+(let [hailstones (->> (parse-input puzzle-input)
                       (map project-to-x-dimension)
                       name-hs)
       left (left-edge hailstones)
@@ -480,7 +480,4 @@
                                 (recur (map move-hailstone next-level) (inc relative-clock)))))))))]
             (if candidate
               candidate
-              (recur (map move-hailstone hailstones) (inc world-clock))))))
-    )
-
-  )
+              (recur (map move-hailstone hailstones) (inc world-clock))))))))
