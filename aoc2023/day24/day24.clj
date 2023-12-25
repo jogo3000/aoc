@@ -468,16 +468,16 @@
                         (if
                             (some nil? hit-points) nil
 
-                            (let [hit-distances (->> (into [[(:px rightmost) (:py rightmost)]])
+                            (let [hit-distances (->> hit-points
+                                                     (into [[(:px rightmost) (:py rightmost)]])
                                                      sort
                                                      (partition 2 1)
                                                      (map #(apply manhattan-distance %))
                                                      set)]
-                              (if (> (greatest-common-divisor hit-distances) 1)
-                                candidate
-                                (recur (map move-hailstone next-level) (inc relative-clock)))))
-
-))))]
+                              (if (and (seq hit-distances)
+                                       (> (greatest-common-divisor hit-distances) 1))
+                                (update candidate :px - (:vx candidate))
+                                (recur (map move-hailstone next-level) (inc relative-clock)))))))))]
             (if candidate
               candidate
               (recur (map move-hailstone hailstones) (inc world-clock))))))
