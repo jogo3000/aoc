@@ -346,16 +346,19 @@
                          h2 (get hstones2 j)]
                    :when (not= (:name h1) (:name h2))]
                (let [candidate-beam
-                     (move-hailstone-backwards (beam-between h1 h2 (dec dt)))
+                     (move-hailstone-backwards (beam-between h1 h2 dt))
                      comparison-stones (remove (fn [h] (= (mapv #(% candidate-beam) [:vx :vy :vz])
                                                           (mapv #(% h) [:vx :vy :vz]))) hstones2)]
-                 #_(when (= candidate-beam #day24.Hailstone{:px 24, :py 13, :pz 10, :vx -3, :vy 1, :vz 2})
+                 (when (= candidate-beam #day24.Hailstone{:px 24, :py 13, :pz 10, :vx -3, :vy 1, :vz 2})
                    (def *hstones hstones1) (def *hstones2 hstones2)
                    (def *dt dt)
                    (def *comparison-stones comparison-stones))
                  (when (and (not (zero? (:vx candidate-beam)))
                             (not (zero? (:vy candidate-beam)))
                             (not (zero? (:vz candidate-beam)))
+                            (not (ratio? (:px candidate-beam)))
+                            (not (ratio? (:py candidate-beam)))
+                            (not (ratio? (:pz candidate-beam)))
                             (every? #(solve-equation-pair-3d candidate-beam %)
                                     comparison-stones))
                    candidate-beam)))))))
@@ -370,17 +373,28 @@
        hs))
 
 (let [hailstones (vec (map #(assoc % :name (gensym)) (parse-input sample-input)))
-      c (count hailstones)]
-  (loop [dt 2
-         hailstones-path [hailstones (mapv move-hailstone hailstones) (mapv move-hailstone (mapv move-hailstone hailstones))]]
-    (if (> dt 1000) :fail
-        (do (println "round " dt)
-            (let [candidates
-                  (find-candidates (get hailstones-path 1)
-                                   (get hailstones-path dt)
-                                   dt)]
-              (if (seq candidates) candidates
-                  (recur (inc dt) (conj hailstones-path (mapv move-hailstone (get hailstones-path dt))))))))))
+      c (count hailstones)
+      max-iterations 30
+      hailstones-path (take (* max-iterations
+                               max-iterations)
+                            (iterate #(mapv move-hailstone %) hailstones))]
+  (def *path hailstones-path)
+  (loop [d0 0]
+    (if (> d0 max-iterations)
+      :fail
+      (let [res
+            (loop [dt 1]
+              (if (> dt max-iterations) :fail
+                  (do (println "round " d0, dt)
+                      (let [candidates
+                            (find-candidates (nth hailstones-path d0)
+                                             (nth hailstones-path (+ d0 dt))
+                                             dt)]
+                        (if (seq candidates) candidates
+                            (recur (inc dt)))))))]
+        (if (= :fail res)
+          (recur (inc d0))
+          res)))))
 
 
 (def sample-hailstones (parse-input sample-input))
