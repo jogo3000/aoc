@@ -266,20 +266,34 @@
       (let [[x y] (solve-equation-pair l1 l2)
             l3 (to-line (->Hailstone (:py h1) (:pz h1) nil (:vy h1) (:vz h1) nil))
             l4 (to-line (->Hailstone (:py h2) (:pz h2) nil (:vy h2) (:vz h2) nil))]
-        (if (= (:x-factor l3) (:x-factor l4))
+        (if (= (:x-factor l3) (:x-factor l4)) ;; parallel
           nil
           (let [[y' z] (solve-equation-pair l3 l4)]
 
-            (assert (= y y') "These should match, otherwise it doesn't work")
-            [x y z]))))))
+            (assert (= y y') (str "These should match, otherwise it doesn't work " y  " " y'))
+            (when (= y y')
+              [x y z])))))))
 
 (solve-equation-pair-3d
  (->Hailstone 19 13 30 -2 1 -2)
  (->Hailstone 24 13 10 -3 1  2)) ; [9N 18N 20] This seems to work. What about if it doesn't hit?
 
 (solve-equation-pair-3d
+ (->Hailstone 18 19 22 -1 -1 -2)
+ (->Hailstone 24 13 10 -3 1  2))
+
+(solve-equation-pair-3d
  (->Hailstone 19 13 30 -2 -1 -2)
  (->Hailstone 18, 19, 22 -1, -1, -2)) ; nil works, they shouldn't hit based on the puzzle description
+
+
+(beam-between (->Hailstone 21 14 12 1 -5 -2)
+              (->Hailstone 15 16 16 -1 -1 -2)
+              2)
+
+#day24.Hailstone{:px 21, :py 14, :pz 12, :vx -3, :vy 1, :vz 0}
+
+
 
 ;; Example: If a straight line is passing through the two fixed points in the
 ;; 3-dimensional whose position coordinates are P (2, 3, 5) and Q (4, 6, 12)
@@ -299,7 +313,7 @@
 (defn beam-between [h1 h2 dt]
   (let [l (- (:px h2) (:px h1))
         m (- (:py h2) (:py h1))
-        n (- (:pz h2) (:pz h2))]
+        n (- (:pz h2) (:pz h1))]
     (->Hailstone (:px h1) (:py h1) (:pz h1) (/ l dt) (/ m dt) (/ n dt))))
 
 ;; This has the problem that it doesn't take into account the starting
@@ -314,6 +328,12 @@
       (update :py + (:vy h))
       (update :pz + (:vz h))))
 
+(defn move-hailstone-backwards [h]
+  (-> h
+      (update :px - (:vx h))
+      (update :py - (:vy h))
+      (update :pz - (:vz h))))
+
 ;; Desired result 24, 13, 10 and velocity -3, 1, 2
 
 (defn find-candidates [hstones1 hstones2 dt]
@@ -326,29 +346,38 @@
                          h2 (get hstones2 j)]
                    :when (not= (:name h1) (:name h2))]
                (let [candidate-beam
-                     (beam-between h1 h2 dt)]
+                     (move-hailstone-backwards (beam-between h1 h2 (dec dt)))
+                     comparison-stones (remove (fn [h] (= (mapv #(% candidate-beam) [:vx :vy :vz])
+                                                          (mapv #(% h) [:vx :vy :vz]))) hstones2)]
+                 (when (= candidate-beam #day24.Hailstone{:px 24, :py 13, :pz 10, :vx -3, :vy 1, :vz 2})
+                   (def *comparison-stones comparison-stones))
                  (when (and (pos? (:vx candidate-beam))
                             (pos? (:vy candidate-beam))
-                            (pos? (:vz candidate-beam)))
-                   (every? #(solve-equation-pair-3d candidate-beam %)
-                           (remove #(or (= (:name %) (:name h1))
-                                        (= (:name %) (:name h2))) hstones1)))))))))
+                            (pos? (:vz candidate-beam))
+                            (every? #(solve-equation-pair-3d candidate-beam %)
+                                    comparison-stones))
+                   candidate-beam)))))))
+
+(map (juxt identity #(solve-equation-pair-3d #day24.Hailstone{:px 24, :py 13, :pz 10, :vx -3, :vy 1, :vz 2} %))
+     *comparison-stones)
 
 (defn name-hs [hs]
   (map #(assoc % :name (gensym))
        hs))
 
-#_(let [hailstones (vec (map #(assoc % name (gensym)) (parse-input sample-input)))
+(let [hailstones (vec (map #(assoc % :name (gensym)) (parse-input sample-input)))
       c (count hailstones)]
-  (loop [dt 1
-         hailstones-path [hailstones (mapv move-hailstone hailstones)]]
-    (if (> dt 10000) :fail
-        (let [candidates
-              (find-candidates (get hailstones-path 0)
-                               (get hailstones-path dt)
-                               dt)]
-          (if (seq candidates) candidates
-              (recur (inc dt) (conj hailstones-path (mapv move-hailstone hailstones))))))))
+  (loop [dt 2
+         hailstones-path [hailstones (mapv move-hailstone hailstones) (mapv move-hailstone (mapv move-hailstone hailstones))]]
+    (if (> dt 3) :fail
+        (do (println "round " dt)
+            (def *hp hailstones-path)
+            (let [candidates
+                  (find-candidates (get hailstones-path 1)
+                                   (get hailstones-path dt)
+                                   dt)]
+              (if (seq candidates) candidates
+                  (recur (inc dt) (conj hailstones-path (mapv move-hailstone (get hailstones-path dt))))))))))
 
 
 (def sample-hailstones (parse-input sample-input))
@@ -434,7 +463,7 @@
   (let [x-positions (into #{} (map :px hs))]
     (< (count x-positions) (count hs))))
 
-(let [hailstones (->> (parse-input puzzle-input)
+#_(let [hailstones (->> (parse-input puzzle-input)
                       (map project-to-x-dimension)
                       name-hs)
       left (left-edge hailstones)
@@ -481,3 +510,205 @@
             (if candidate
               candidate
               (recur (map move-hailstone hailstones) (inc world-clock))))))))
+
+(comment
+(to-line (->Hailstone 19 1 0 -2 1 0))
+
+
+(let [hailstones (->> (parse-input sample-input)
+                      (map project-to-x-dimension)
+                      name-hs)
+      left (left-edge hailstones)
+      right (right-edge hailstones)
+      start-time 0]
+
+  ;; Try out the right side first, because in the sample that is where the solution is found
+
+  (loop [hailstones hailstones
+         world-clock start-time]
+    ;; Advance world clock until all rocks are distinct
+    (let [rightmost (right-edge hailstones)
+          others (disj (set hailstones) rightmost)]
+      (if ;; Many hailstones in the same position, this can't be it
+          (contains? (->> others (map :px) set) (:px rightmost))
+          (recur (map move-hailstone hailstones) (inc world-clock))
+
+          (loop [others others
+                 h-cand (right-edge others)
+                 delta-v (- (:vx h-cand)
+                            (:vx rightmost))]
+            delta-v)))))
+
+(apply min-key :vx (parse-input puzzle-input))
+#day24.Hailstone{:px 455160135943041, :py 416020055225069, :pz 478237633141809, :vx -331, :vy -236, :vz -306}
+(apply max-key :vx (parse-input puzzle-input))
+
+#day24.Hailstone{:px 171893378980836, :py 226953722759994, :pz 236802876450239, :vx 289, :vy 102, :vz 121}
+
+(apply min-key (comp abs :vx) (parse-input puzzle-input))
+
+;; Slowest absolute speed
+#day24.Hailstone{:px 249599421151031, :py 394069474260792, :pz 366619266165953, :vx 5, :vy -181, :vz -98}
+
+(apply max-key (comp abs :vx) (parse-input puzzle-input))
+;; Fastest absolute speed
+#day24.Hailstone{:px 455160135943041, :py 416020055225069, :pz 478237633141809, :vx -331, :vy -236, :vz -306}
+
+(sort-by :vx (parse-input puzzle-input))
+
+(sort-by :px (parse-input puzzle-input))
+
+8831802251766
+16801569357148
+20220675054975
+455160135943041
+
+(- 455160135943041 8831802251766)
+
+; 446 328 333 691 275
+
+
+(def parallel-by-vx (group-by :vx (parse-input puzzle-input)))
+
+(->> (sort-by :px (parallel-by-vx -105))
+     (map :px)
+     (partition 2 1)
+     (map (comp abs #(apply - %)))
+     greatest-common-divisor) 225
+
+
+(->> (sort-by :px (parallel-by-vx -12))
+     (map :px)
+     (partition 2 1)
+     (map (comp abs #(apply - %)))
+     greatest-common-divisor) ; 205425316258398 only 1 of these
+
+
+(greatest-common-divisor
+ (into
+  (into
+   (->> (sort-by :px (parallel-by-vx -105))
+        (map :px)
+        (partition 2 1)
+        (map (comp abs #(apply - %))))
+
+   (->> (sort-by :px (parallel-by-vx -12))
+        (map :px)
+        (partition 2 1)
+        (map (comp abs #(apply - %)))))
+
+  (->> (sort-by :px (parallel-by-vx 128))
+       (map :px)
+       (partition 2 1)
+       (map (comp abs #(apply - %))))))
+
+
+(reduce + (map :x-factor (map to-line (map project-to-x-dimension sample-hailstones)))) ; -2N
+(reduce + (map :c-factor (map to-line (map project-to-x-dimension sample-hailstones)))) ; 59/2
+
+(reduce + (map :vx sample-hailstones)) ; -5
+
+(reduce + (map :vy sample-hailstones)) ; -9
+
+(reduce + (map :vz sample-hailstones)) ; -12
+
+(least-common-multiple (map :vx sample-hailstones)) -2
+
+(least-common-multiple (map :x-factor (map to-line (map project-to-x-dimension sample-hailstones)))) -1N
+
+(greatest-common-divisor (map :x-factor (map to-line (map project-to-x-dimension sample-hailstones))))
+)
+
+
+(reduce * (map :vx sample-hailstones)) ; 4
+
+(greatest-common-divisor (map :px (parse-input puzzle-input)))
+
+(sort-by second (frequencies (map :px (parse-input puzzle-input))))
+
+(sort-by second (frequencies (map :py (parse-input puzzle-input))))
+
+(sort-by second (frequencies (map :pz (parse-input puzzle-input))))
+
+(map (juxt identity #(apply max-key % (parse-input puzzle-input))) [:vx :vy :vz])
+
+; vx -331 289
+; vy -88 842
+; vz -909 878
+
+
+(map (juxt identity #(apply min-key % (parse-input puzzle-input))) [:vx :vy :vz])
+
+(* (- 289 -331) (- 842 -88) (- 878 -909)) ; k-space 1 030 384 200
+
+(defn hit-positions
+  "Checked 13.09"
+  [candidate hailstone-lines]
+  (let [candidate-line (to-line candidate)]
+    (->> (map
+          (fn [hl]
+            (if (= (:x-factor hl) ;; Don't try with parallel lines
+                   (:x-factor candidate-line)) :ignore
+                (solve-equation-pair candidate-line hl)))
+          hailstone-lines)
+         (remove #(= :ignore %)))))
+
+(defn check-for-hits [h1 i hailstone-lines comparison-positions amount t]
+  (loop [j 0]
+    (if (>= j amount) nil
+        ;; Don't compare with itself
+        (if (= i j) (recur (inc j))
+            (let [h2 (get comparison-positions j)
+                  candidate (beam-between h1 h2 t)
+                  hit-points (hit-positions candidate hailstone-lines)]
+              (println h1 h2 candidate)
+
+              (if (or (some nil? hit-points)
+                      (some #(neg? (second %)) hit-points)) (recur (inc j))
+                  (let [distances (->> hit-points
+                                       (into [[(:px h1) (:py h1)]])
+                                       sort
+                                       (partition 2 1)
+                                       (map #(apply manhattan-distance %))
+                                       (map abs)
+                                       set)]
+                    (if (and (not-any? zero? distances)
+                             (seq distances)
+                             (> (greatest-common-divisor distances) 1))
+                      (update candidate :px - (:vx candidate))
+                      (recur (inc j))))))))))
+
+
+(defn find-hits-in-next-rounds [max-rounds initial-positions hailstone-lines amount]
+  (loop [c 1
+         comparison-positions initial-positions]
+    (if (> c max-rounds) nil
+        (let [comparison-positions (mapv move-hailstone comparison-positions)
+              hits
+              (->>
+               (map-indexed
+                (fn [i h1]
+                  (check-for-hits h1 i hailstone-lines comparison-positions amount (inc c)))
+                initial-positions)
+               (remove nil?))]
+          (if (seq hits) (first hits)
+              (recur (inc c) comparison-positions))))))
+
+;; Try to iterate _once more_
+(let [hailstones sample-hailstones
+      amount (count hailstones)
+      hailstones (mapv project-to-x-dimension hailstones)
+      hailstone-lines (mapv to-line hailstones)
+      max-rounds 10]
+  (loop [initial-positions (mapv move-hailstone hailstones)
+         c 1]
+    (if (> c max-rounds)
+      nil
+      (let [hit
+            (find-hits-in-next-rounds max-rounds initial-positions hailstone-lines amount)]
+        (if hit hit
+            (recur (map move-hailstone initial-positions)
+                   (inc c)))))))
+
+
+(map to-line sample-hailstones)
