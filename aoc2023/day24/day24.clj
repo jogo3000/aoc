@@ -264,14 +264,14 @@
     (if (= (:x-factor l1) (:x-factor l2)) ;; parallel
       nil
       (let [[x y] (solve-equation-pair l1 l2)
-            l3 (to-line (->Hailstone (:py h1) (:pz h1) nil (:vy h1) (:vz h1) nil))
-            l4 (to-line (->Hailstone (:py h2) (:pz h2) nil (:vy h2) (:vz h2) nil))]
+            l3 (to-line (->Hailstone (:px h1) (:pz h1) nil (:vx h1) (:vz h1) nil))
+            l4 (to-line (->Hailstone (:px h2) (:pz h2) nil (:vx h2) (:vz h2) nil))]
         (if (= (:x-factor l3) (:x-factor l4)) ;; parallel
           nil
-          (let [[y' z] (solve-equation-pair l3 l4)]
+          (let [[x' z] (solve-equation-pair l3 l4)]
 
-            (assert (= y y') (str "These should match, otherwise it doesn't work " y  " " y'))
-            (when (= y y')
+            #_(assert (= y y') (str "These should match, otherwise it doesn't work " y  " " y'))
+            (when (= x x')
               [x y z])))))))
 
 (solve-equation-pair-3d
@@ -349,17 +349,21 @@
                      (move-hailstone-backwards (beam-between h1 h2 (dec dt)))
                      comparison-stones (remove (fn [h] (= (mapv #(% candidate-beam) [:vx :vy :vz])
                                                           (mapv #(% h) [:vx :vy :vz]))) hstones2)]
-                 (when (= candidate-beam #day24.Hailstone{:px 24, :py 13, :pz 10, :vx -3, :vy 1, :vz 2})
+                 #_(when (= candidate-beam #day24.Hailstone{:px 24, :py 13, :pz 10, :vx -3, :vy 1, :vz 2})
+                   (def *hstones hstones1) (def *hstones2 hstones2)
+                   (def *dt dt)
                    (def *comparison-stones comparison-stones))
-                 (when (and (pos? (:vx candidate-beam))
-                            (pos? (:vy candidate-beam))
-                            (pos? (:vz candidate-beam))
+                 (when (and (not (zero? (:vx candidate-beam)))
+                            (not (zero? (:vy candidate-beam)))
+                            (not (zero? (:vz candidate-beam)))
                             (every? #(solve-equation-pair-3d candidate-beam %)
                                     comparison-stones))
                    candidate-beam)))))))
 
 (map (juxt identity #(solve-equation-pair-3d #day24.Hailstone{:px 24, :py 13, :pz 10, :vx -3, :vy 1, :vz 2} %))
      *comparison-stones)
+
+(every? #(solve-equation-pair-3d #day24.Hailstone{:px 24, :py 13, :pz 10, :vx -3, :vy 1, :vz 2} %) *comparison-stones)
 
 (defn name-hs [hs]
   (map #(assoc % :name (gensym))
@@ -369,9 +373,8 @@
       c (count hailstones)]
   (loop [dt 2
          hailstones-path [hailstones (mapv move-hailstone hailstones) (mapv move-hailstone (mapv move-hailstone hailstones))]]
-    (if (> dt 3) :fail
+    (if (> dt 1000) :fail
         (do (println "round " dt)
-            (def *hp hailstones-path)
             (let [candidates
                   (find-candidates (get hailstones-path 1)
                                    (get hailstones-path dt)
