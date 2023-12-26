@@ -399,49 +399,69 @@
 
 (def sample-hailstones (parse-input sample-input))
 
-(def res
-  (let [hailstones (vec (map #(assoc %
-                                     :name (str (gensym))
-                                     :generation 0) (parse-input sample-input)))]
-    (loop [current-hailstone-positions hailstones
-           all-hailstone-positions (into #{} current-hailstone-positions)
-           round 1]
-      (if (> round 10) :fail
-          (let [new-hailstone-posisions (map (comp #(assoc % :generation round) move-hailstone)
-                                             current-hailstone-positions)
-                amassed-hailstone-positions (into all-hailstone-positions new-hailstone-posisions)
-                candidate-pairs (->> amassed-hailstone-positions
-                                     (partition 2 1)
-                                     (remove (fn [[h1 h2]] (= (:generation h1) (:generation h2)))))]
-            (if-let [result
-                     (->> candidate-pairs
-                          (some (fn [[h1 h2]]
-                                  (let [older (min-key :generation h1 h2)
-                                        newer (max-key :generation h1 h2)
-                                        candidate-beam (->> (beam-between older newer (- (:generation newer)
-                                                                                         (:generation older)))
-                                                            move-hailstone-backwards)
-                                        comparison-hailstones
-                                        (remove (fn [h] (and (= (:vx candidate-beam)
-                                                                (:vx h))
-                                                             (= (:vy candidate-beam)
-                                                                (:vx h))
-                                                             (= (:vz candidate-beam)
-                                                                (:vz h))))
-                                                hailstones)]
-                                    (when (and (not (zero? (:vx candidate-beam)))
-                                               (not (zero? (:vy candidate-beam)))
-                                               (not (zero? (:vz candidate-beam)))
-                                               (not (ratio? (:px candidate-beam)))
-                                               (not (ratio? (:py candidate-beam)))
-                                               (not (ratio? (:pz candidate-beam)))
-                                               (every? #(solve-equation-pair-3d candidate-beam %)
-                                                       comparison-hailstones))
-                                      candidate-beam)))))]
-              result
-              (recur new-hailstone-posisions
-                     amassed-hailstone-positions
-                     (inc round))))))))
+(defn subsets [n items]
+  (cond
+    (= n 0) '(())
+    (empty? items) '()
+    :else (lazy-cat (map
+                     #(cons (first items) %)
+                     (subsets (dec n) (rest items)))
+                    (subsets n (rest items)))))
+
+(let [hailstones (vec (map #(assoc %
+                                   :name (str (gensym))
+                                   :generation 0) (parse-input sample-input)))]
+  (loop [current-hailstone-positions hailstones
+         all-hailstone-positions (into #{} current-hailstone-positions)
+         checked #{}
+         round 1]
+    (when (zero? (mod round 100)) (println "Starting round:" round))
+    (let [new-hailstone-posisions (map (comp #(assoc % :generation round) move-hailstone)
+                                       current-hailstone-positions)
+          amassed-hailstone-positions (into all-hailstone-positions new-hailstone-posisions)
+          candidate-pairs (->> amassed-hailstone-positions
+                               (subsets 2)
+                               (remove (fn [[h1 h2]] (= (:generation h1) (:generation h2))))
+                               (remove checked))]
+      (if-let [result
+               (->> candidate-pairs
+                    (some (fn [[h1 h2]]
+                            (let [candidate-beam (->> (beam-between h1 h2
+                                                                    (abs (- (:generation h1)
+                                                                            (:generation h2))))
+                                                      move-hailstone-backwards)
+                                  comparison-hailstones
+                                  (remove (fn [h] (and (= (:vx candidate-beam)
+                                                          (:vx h))
+                                                       (= (:vy candidate-beam)
+                                                          (:vx h))
+                                                       (= (:vz candidate-beam)
+                                                          (:vz h))))
+                                          hailstones)]
+                              (when (and (not (zero? (:vx candidate-beam)))
+                                         (not (zero? (:vy candidate-beam)))
+                                         (not (zero? (:vz candidate-beam)))
+                                         (not (ratio? (:px candidate-beam)))
+                                         (not (ratio? (:py candidate-beam)))
+                                         (not (ratio? (:pz candidate-beam)))
+                                         (every? #(solve-equation-pair-3d candidate-beam %)
+                                                 comparison-hailstones))
+                                [candidate-beam
+                                 (->> (beam-between h2 h1
+                                                    (abs (- (:generation h1)
+                                                            (:generation h2))))
+                                      move-hailstone-backwards)])))))]
+        result
+        (recur new-hailstone-posisions
+               amassed-hailstone-positions
+               (into checked candidate-pairs)
+               (inc round))))))
+
+
+
+(nth (iterate move-hailstone #day24.Hailstone{:px 12, :py 17, :pz 18, :vx 3, :vy -1, :vz -2})
+     4)
+#day24.Hailstone{:px 24, :py 13, :pz 10, :vx -3, :vy 1, :vz 2}
 
 
 (comment
