@@ -462,9 +462,10 @@
 
 ;; You tried, you really tried. But failed. 8 hrs and 25 minutes in no solution. It is on round 50.
 
+(every? #(solve-equation-pair-3d (->Hailstone 454587375941126 244764814652484 249133632375809 -330 63 94) %)
+        (parse-input puzzle-input))
 
-
-(nth (iterate move-hailstone #day24.Hailstone{:px 12, :py 17, :pz 18, :vx 3, :vy -1, :vz -2})
+#_#_(nth (iterate move-hailstone #day24.Hailstone{:px 12, :py 17, :pz 18, :vx 3, :vy -1, :vz -2})
      4)
 #day24.Hailstone{:px 24, :py 13, :pz 10, :vx -3, :vy 1, :vz 2}
 
