@@ -1,7 +1,7 @@
 .nrepl-port
-/aoc2023/.cpcache/
-/aoc2023/day24/__pycache__/
-/aoc2023/day24/bin/
-/aoc2023/day24/lib/
-/aoc2023/day24/lib64
+__pycache__/
+bin/
+lib/
+lib64
 /aoc2023/day24/share/
+.cpcache/
