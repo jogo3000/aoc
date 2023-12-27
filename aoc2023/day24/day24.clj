@@ -494,12 +494,20 @@
        (map (fn [[_ a [_ b c] [_ d e] f]]
               (list '- a (list '* (list '+ b d) c) f)))))
 
+(defn is-zero? [s]
+  (and (number? s)
+       (zero? s)))
+
 (defn eliminoi-px [equations]
   (let [[head & tail] equations
         [_minus _px [_kerto [_plus a1 b1] c1] z] head]
     (into [head]
           (map (fn [[_minus _px [_kerto [_plus a2 b2] c2] z2]]
-                 (list '- (list '* (list '- a1 a2 (- b1 b2)) c2 ) (- z2 z))))
+                 (list '- (remove
+                           is-zero?
+                           (list
+                            '*
+                            (remove is-zero? (list '- a1 a2 (- b1 b2))) c2 )) (- z2 z))))
           tail)))
 
 (defn balance-constants [e1 [_ [_ a b] c2 :as e2]]
@@ -530,6 +538,7 @@
        eliminoi-px
        (walk/postwalk #(if (seq? %) (remove zero-s? %) %))
        (balance-nth-equations 1 2)))
+
 
 
 (comment
