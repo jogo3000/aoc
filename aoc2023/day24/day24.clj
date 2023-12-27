@@ -485,6 +485,10 @@
     ;; f11 = p_z + t_3 * v_z + 4 * t_3 - 34
     ;; f12 = p_z + t_4 * v_z + t_4 - 28
 
+(defn zero-s? [s]
+  (and (number? s)
+       (zero? s)))
+
 (defn sievennä-t'n-kertoimet [equations]
   (->> equations
        (map (fn [[_ a [_ b c] [_ d e] f]]
@@ -498,6 +502,23 @@
                  (list '- (list '* (list '- a1 a2 (- b1 b2)) c2 ) (- z2 z))))
           tail)))
 
+(defn balance-constants [e1 [_ [_ a b] c2 :as e2]]
+  (let [c1 (first (filter number? e1))
+        balancer (lcm c1 c2)]
+    [e1
+     (list '- (list '* balancer a b) (* balancer c2))]))
+
+(balance-constants '(- (* (- t1 t2 -1) vx) -1)
+                   '(- (* (- t1 t3) vx) 1))
+
+(defn balance-nth-equations [n m es]
+  (let [e1 (nth es n)
+        e2 (nth es m)
+        [e1' e2']
+        (balance-constants e1 e2)]
+    (-> (vec es)
+        (assoc n e1' m e2'))))
+
 (let [tokens (atom [])
       equations
       '[(- px (* t1 vx) (* -2 t1) 19)
@@ -506,7 +527,9 @@
         (- px (* t4 vx) (* -1 t4) 12)]]
   (->> equations
        sievennä-t'n-kertoimet
-       eliminoi-px))
+       eliminoi-px
+       (walk/postwalk #(if (seq? %) (remove zero-s? %) %))
+       (balance-nth-equations 1 2)))
 
 
 (comment
