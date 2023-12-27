@@ -1,5 +1,6 @@
 (ns day24
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [clojure.walk :as walk]))
 
 (def puzzle-input (slurp "day24/input.txt"))
 
@@ -468,6 +469,44 @@
 #_#_(nth (iterate move-hailstone #day24.Hailstone{:px 12, :py 17, :pz 18, :vx 3, :vy -1, :vz -2})
      4)
 #day24.Hailstone{:px 24, :py 13, :pz 10, :vx -3, :vy 1, :vz 2}
+
+    ;; f1 = p_x + t_1 * v_x + 2 * t_1 - 19
+    ;; f2 = p_x + t_2 * v_x + t_2 - 18
+    ;; f3 = p_x + t_3 * v_x + 2 * t_3 - 20
+    ;; f4 = p_x + t_4 * v_x + t_4 - 12
+
+    ;; f5 = p_y + t_1 * v_y - t_1 - 13
+    ;; f6 = p_y + t_2 * v_y + t_2 - 19
+    ;; f7 = p_y + t_3 * v_y + 2 * t_3 - 25
+    ;; f8 = p_y + t_4 * v_y + 2 * t_4 - 31
+
+    ;; f9  = p_z + t_1 * v_z + 2 * t_1 - 30
+    ;; f10 = p_z + t_2 * v_z + 2 * t_2 - 22
+    ;; f11 = p_z + t_3 * v_z + 4 * t_3 - 34
+    ;; f12 = p_z + t_4 * v_z + t_4 - 28
+
+(defn sievennä-t'n-kertoimet [equations]
+  (->> equations
+       (map (fn [[_ a [_ b c] [_ d e] f]]
+              (list '- a (list '* (list '+ b d) c) f)))))
+
+(defn eliminoi-px [equations]
+  (let [[head & tail] equations
+        [_minus _px [_kerto [_plus a1 b1] c1] z] head]
+    (into [head]
+          (map (fn [[_minus _px [_kerto [_plus a2 b2] c2] z2]]
+                 (list '- (list '* (list '- a1 a2 (- b1 b2)) c2 ) (- z2 z))))
+          tail)))
+
+(let [tokens (atom [])
+      equations
+      '[(- px (* t1 vx) (* -2 t1) 19)
+        (- px (* t2 vx) (* -1 t2) 18)
+        (- px (* t3 vx) (* -2 t3) 20)
+        (- px (* t4 vx) (* -1 t4) 12)]]
+  (->> equations
+       sievennä-t'n-kertoimet
+       eliminoi-px))
 
 
 (comment
