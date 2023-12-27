@@ -408,54 +408,59 @@
                      (subsets (dec n) (rest items)))
                     (subsets n (rest items)))))
 
-(let [hailstones (vec (map #(assoc %
-                                   :name (str (gensym))
-                                   :generation 0) (parse-input sample-input)))]
-  (loop [current-hailstone-positions hailstones
-         all-hailstone-positions (into #{} current-hailstone-positions)
-         checked #{}
-         round 1]
-    (when (zero? (mod round 100)) (println "Starting round:" round))
-    (let [new-hailstone-posisions (map (comp #(assoc % :generation round) move-hailstone)
-                                       current-hailstone-positions)
-          amassed-hailstone-positions (into all-hailstone-positions new-hailstone-posisions)
-          candidate-pairs (->> amassed-hailstone-positions
-                               (subsets 2)
-                               (remove (fn [[h1 h2]] (= (:generation h1) (:generation h2))))
-                               (remove checked))]
-      (if-let [result
-               (->> candidate-pairs
-                    (some (fn [[h1 h2]]
-                            (let [candidate-beam (->> (beam-between h1 h2
-                                                                    (abs (- (:generation h1)
-                                                                            (:generation h2))))
-                                                      move-hailstone-backwards)
-                                  comparison-hailstones
-                                  (remove (fn [h] (and (= (:vx candidate-beam)
-                                                          (:vx h))
-                                                       (= (:vy candidate-beam)
-                                                          (:vx h))
-                                                       (= (:vz candidate-beam)
-                                                          (:vz h))))
-                                          hailstones)]
-                              (when (and (not (zero? (:vx candidate-beam)))
-                                         (not (zero? (:vy candidate-beam)))
-                                         (not (zero? (:vz candidate-beam)))
-                                         (not (ratio? (:px candidate-beam)))
-                                         (not (ratio? (:py candidate-beam)))
-                                         (not (ratio? (:pz candidate-beam)))
-                                         (every? #(solve-equation-pair-3d candidate-beam %)
-                                                 comparison-hailstones))
-                                [candidate-beam
-                                 (->> (beam-between h2 h1
-                                                    (abs (- (:generation h1)
-                                                            (:generation h2))))
-                                      move-hailstone-backwards)])))))]
-        result
-        (recur new-hailstone-posisions
-               amassed-hailstone-positions
-               (into checked candidate-pairs)
-               (inc round))))))
+#_(def result
+  (let [hailstones (vec (map #(assoc %
+                                     :name (str (gensym))
+                                     :generation 0) (parse-input puzzle-input)))]
+    (loop [current-hailstone-positions hailstones
+           all-hailstone-positions (into #{} current-hailstone-positions)
+           checked #{}
+           round 1]
+      (println "Starting round:" round)
+      (let [new-hailstone-posisions (map (comp #(assoc % :generation round) move-hailstone)
+                                         current-hailstone-positions)
+            amassed-hailstone-positions (into all-hailstone-positions new-hailstone-posisions)
+            candidate-pairs (->> amassed-hailstone-positions
+                                 (subsets 2)
+                                 (remove (fn [[h1 h2]] (= (:generation h1) (:generation h2))))
+                                 (remove checked))]
+        (if-let [result
+                 (->> candidate-pairs
+                      (some (fn [[h1 h2]]
+                              (let [candidate-beam (->> (beam-between h1 h2
+                                                                      (abs (- (:generation h1)
+                                                                              (:generation h2))))
+                                                        move-hailstone-backwards)
+                                    comparison-hailstones
+                                    (remove (fn [h] (and (= (:vx candidate-beam)
+                                                            (:vx h))
+                                                         (= (:vy candidate-beam)
+                                                            (:vx h))
+                                                         (= (:vz candidate-beam)
+                                                            (:vz h))))
+                                            hailstones)]
+                                (when (and (not (zero? (:vx candidate-beam)))
+                                           (not (zero? (:vy candidate-beam)))
+                                           (not (zero? (:vz candidate-beam)))
+                                           (not (ratio? (:px candidate-beam)))
+                                           (not (ratio? (:py candidate-beam)))
+                                           (not (ratio? (:pz candidate-beam)))
+                                           (every? #(solve-equation-pair-3d candidate-beam %)
+                                                   comparison-hailstones))
+                                  [candidate-beam
+                                   (->> (beam-between h2 h1
+                                                      (abs (- (:generation h1)
+                                                              (:generation h2))))
+                                        move-hailstone-backwards)])))))]
+          (do
+            (println result)
+             result)
+          (recur new-hailstone-posisions
+                 amassed-hailstone-positions
+                 (into checked candidate-pairs)
+                 (inc round)))))))
+
+;; You tried, you really tried. But failed. 8 hrs and 25 minutes in no solution. It is on round 50.
 
 
 
