@@ -42,18 +42,30 @@ NOT y -> i
                      leftover-expr)))))
 
 (defn remove-expr [program n]
-  (let [[head tail] (split-at program n)]
-    (into head
+  (let [[head tail] (split-at n program)]
+    (into (vec head)
           (rest tail))))
 
-(defn reorder-exprs [program]
-  (let [def-locs
+(defn reorder-exprs [program] ;; FIXME
+  (let [root-val-locs
+        (->> program
+             (map-indexed (fn [i [_ _ expr]]
+                            (when (number? expr) i)))
+             (remove nil?))
+        root-vals (mapv #(get program %) root-val-locs)
+        unordered-program (reduce
+                           (fn [program i]
+                             (remove-expr program i))
+                           program
+                           (reverse root-val-locs))
+
+        def-locs
         (into {} (map-indexed (fn [i exp]
                                 (let [[_def v _e] exp]
                                   [v i])))
-              program)
+              unordered-program)
         dependencies
-        (->> program
+        (->> unordered-program
              (map-indexed (fn [i [_ _var expr]]
                             (cond (number? expr) []
                                   (symbol? expr) [{expr i}]
@@ -64,19 +76,23 @@ NOT y -> i
              (remove (comp number? first))
              (sort-by second))
         prioritized-definitions
-        (mapv (fn [[sym loc]]
-                (let [def-loc (get def-locs sym loc)
-                      definition (get program def-loc)]
-                  definition)) dependencies)]
+        (into []
+              (comp
+               (map (fn [[sym loc]]
+                      (when-let [def-loc (get def-locs sym loc)]
+                        (let [definition (get unordered-program def-loc)]
+                          definition))))
+               (remove nil?))
+              dependencies)]
 
-    (into prioritized-definitions
-          (reduce (fn [program [sym loc]]
-                    (let [def-loc (get def-locs sym loc)
-                          [head tail] (split-at def-loc program)]
-                      (into head
-                            (rest tail))))
-                  program
-                  (reverse (sort-by second dependencies))))))
+    (-> (vec root-vals)
+        (into prioritized-definitions)
+        (into (reduce (fn [program [sym loc]]
+                        (if-let [def-loc (get def-locs sym)]
+                          (remove-expr program def-loc)
+                          program))
+                      unordered-program
+                      (reverse (sort-by (comp def-locs first) dependencies)))))))
 
 (defn get-list-of-symbols [program]
   (->> program
@@ -111,7 +127,7 @@ NOT x -> h
 NOT y -> i
 ")
 
-  (reorder-exprs (my-read-string misordered-sample))
+  (reorder-exprs (my-read-string misordered-sample)) ;; TODO
   (reorder-exprs (my-read-string puzzle-input))
 
 
