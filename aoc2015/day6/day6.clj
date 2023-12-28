@@ -54,24 +54,35 @@ toggle 0,0 through 999,0
 turn off 499,499 through 500,500")))
 
 (->> puzzle-input
-     str/trim
-     str/split-lines
-     (map (juxt instruction coordinates))
-     (reduce (fn [grid [instruction [x1 y1 x2 y2]]]
-               (let [f
-                     (condp = instruction
-                       turn-off (constantly false)
-                       turn-on (constantly true)
-                       toggle not
-                       identity)]
-                 (if (= identity f)
-                   grid
-                   (reduce (fn [grid [x y]]
-                             (update grid [x y] f))
-                           grid
-                           (for [x (range x1 (inc x2))
-                                 y (range y1 (inc y2))]
-                             [x y])))))
-             grid)
+     parse-input
+     run-instructions
      (filter second)
      count) ;; 400410
+
+
+(defn run-ancient-nordic-elvish-instructions [instructions]
+  (reduce (fn [grid [instruction [x1 y1 x2 y2]]]
+            (let [f
+                  (condp = instruction
+                    turn-off (fn [lux] (max 0 (dec (or lux 0))))
+                    turn-on (fn [lux] (inc (or lux 0)))
+                    toggle (fn [lux] (+ (or lux 0) 2))
+                    identity)]
+              (if (= identity f)
+                grid
+                (reduce (fn [grid [x y]]
+                          (update grid [x y] f))
+                        grid
+                        (for [x (range x1 (inc x2))
+                              y (range y1 (inc y2))]
+                          [x y])))))
+          grid
+          instructions))
+
+(defn evaluate-result-for-brightness [grid]
+  (->> grid vals (reduce +)))
+
+(->> puzzle-input
+     parse-input
+     run-ancient-nordic-elvish-instructions
+     evaluate-result-for-brightness) ; 15343601
