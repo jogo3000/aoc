@@ -1,5 +1,7 @@
 (ns day7
-  (:require [clojure.edn :as edn]))
+  (:require [clojure.edn :as edn]
+            [clojure.walk :as walk])
+  (:import [java.lang Math]))
 
 (def sample "123 -> x
 456 -> y
@@ -20,6 +22,9 @@ NOT y -> i
                      x 123
                      y 456})
 
+(defn NOT [n]
+  (reduce (fn [acc n]
+          (bit-flip acc n)) n (range 16)))
 
 (defn my-read-string [s]
   (loop [[s & symbols] (edn/read-string (str "[" s "]"))
@@ -27,7 +32,7 @@ NOT y -> i
          working-on nil]
     (let [[unprocessed expr leftover-expr]
           (case s
-            NOT [(rest symbols) nil `(bit-not ~(first symbols))]
+            NOT [(rest symbols) nil `(NOT ~(first symbols))]
             -> [(rest symbols) `(~(first symbols) ~working-on) nil]
             AND [(rest symbols) nil `(bit-and ~working-on ~(first symbols))]
             OR [(rest symbols) nil `(bit-or ~working-on ~(first symbols))]
@@ -41,119 +46,27 @@ NOT y -> i
                      (if expr (conj exprs expr) exprs)
                      leftover-expr)))))
 
-(defn find-root-vals [program]
-  (->> program
-       (map-indexed (fn [i [_ expr]]
-                      (when (number? expr) i)))
-       (remove nil?)))
-
-(defn remove-expr [program loc]
-  (let [[head tail] (split-at loc program)]
-    (into (vec head)
-          (rest tail))))
-
-(defn remove-exprs [program locs]
-  (reduce (fn [program loc]
-            (remove-expr program loc))
-          program
-          (reverse locs)))
-
-(defn definition-locations [program]
-  (into {} (map-indexed (fn [i exp]
-                          (let [[v _e] exp]
-                            [v i])))
-        program))
-
-(defn dependencies [program]
-  (->> program
-       (map (fn [[s expr]]
-              (cond (number? expr) []
-                    (symbol? expr) [{s [expr]}]
-                    (seq? expr)
-                    (mapv (fn [symbol] (when (symbol? symbol)
-                                         {s [symbol]})) (rest expr)))))
-       (mapcat identity)
-       (remove nil?)
-       (apply (partial merge-with into))))
-
-(defn prioritized-definitions [program dependencies def-locs]
-  (->> (loop [[head & queue] (keys dependencies)
-              chain '()]
-         (if-not head chain
-                 (let [deps (get dependencies head)]
-                   (recur (into queue (remove (set chain) deps))
-                          (-> (cons head chain))))))
-       (map-indexed (fn [i c] {c i}))
-       (apply (partial merge-with min))
-       (sort-by second)
-       (map (fn [[sym _]]
-              (when-let [def-loc (get def-locs sym)]
-                (get program def-loc))))
-       (remove nil?)))
-
-(defn symbol-def-locations [def-locations symbols]
-  (keep #(get def-locations %) symbols))
-
-(let [program (my-read-string puzzle-input)
-      dependencies (dependencies program)]
-  dependencies)
-
-
-
-(defn reorder-exprs [program]
-  (let [root-val-locs (find-root-vals program)
-        root-vals (mapv #(get program %) root-val-locs)
-        unordered-program (remove-exprs program root-val-locs)
-
-        def-locs (definition-locations unordered-program)
-        dependencies (dependencies unordered-program)
-
-        prioritized-definitions
-        (prioritized-definitions unordered-program dependencies def-locs)
-
-        prioritized-def-locations (symbol-def-locations def-locs (keys dependencies))
-
-        remaining-exprs (remove-exprs unordered-program prioritized-def-locations)]
-
-    (-> (vec root-vals)
-        (into prioritized-definitions)
-        (into remaining-exprs))))
-
-  (reorder-exprs (my-read-string puzzle-input))
-
-(defn get-list-of-symbols [program]
-  (->> program
-       flatten
-       (filter symbol?)
-       (remove #{`bit-and `bit-not `bit-or `bit-shift-right `bit-shift-left})))
-
-(defn eval-string [s]
-  (let [program (->> (my-read-string s)
-                     (reorder-exprs))]
-    (doseq [expr program]
-      (eval expr))))
+(defn eval-wires [input]
+  (loop [wires (into {} (map vec) (my-read-string input))]
+    (if (every? number? (vals wires)) wires
+        (recur
+         (reduce (fn [acc [v _]]
+                   (update acc v
+                           #(walk/postwalk
+                             (fn [v]
+                               (cond
+                                 (number? v) v
+                                 (symbol? v) (get acc v v)
+                                 (seq? v) (if (every? number? (rest v))
+                                            (eval v)
+                                            v)
+                                 :else v)) %)))
+                 wires
+                 wires)))))
 
 (def puzzle-input (slurp "day7/input.txt"))
 
-#_(eval-string puzzle-input)
-
 (comment
-  (eval-string sample)
+  (eval-wires puzzle-input)
 
-  (def misordered-sample "x AND y -> d
-x OR y -> e
-123 -> x
-456 -> y
-x LSHIFT 2 -> f
-y RSHIFT 2 -> g
-NOT x -> h
-NOT y -> i
-")
-
-  (reorder-exprs (my-read-string misordered-sample))
-  (reorder-exprs (my-read-string puzzle-input))
-
-
-
-
-  )
+  (int (Character/MAX_VALUE)))
