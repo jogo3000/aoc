@@ -24,7 +24,7 @@ NOT y -> i
 
 (defn NOT [n]
   (reduce (fn [acc n]
-          (bit-flip acc n)) n (range 16)))
+            (bit-flip acc n)) n (range 16)))
 
 (defn my-read-string [s]
   (loop [[s & symbols] (edn/read-string (str "[" s "]"))
@@ -68,5 +68,4 @@ NOT y -> i
 
 (comment
   (eval-wires puzzle-input)
-
-  (int (Character/MAX_VALUE)))
+)
