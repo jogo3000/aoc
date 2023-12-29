@@ -66,28 +66,30 @@ NOT y -> i
 
 (defn dependencies [program]
   (->> program
-       (map-indexed (fn [i [_ _var expr]]
+       (map-indexed (fn [i [_ s expr]]
                       (cond (number? expr) []
-                            (symbol? expr) [{expr i}]
+                            (symbol? expr) [{s [expr]}]
                             (seq? expr)
-                            (mapv (fn [symbol] {symbol i}) (rest expr)))))
+                            (mapv (fn [symbol] (when (symbol? symbol)
+                                                 {s [symbol]})) (rest expr)))))
        (mapcat identity)
-       (apply merge-with min)
-       (remove (comp number? first))
-       (sort-by second)))
+       (remove nil?)
+       (apply (partial merge-with into))))
 
 (defn prioritized-definitions [program dependencies def-locs]
-  ;; FIXME tämän pitäisi oikeastaan ajaa useampi iteraatio, että se pääsee
-  ;; oikeaan järjestykseen, koska vaikka lausekkeen deffit menevät alkuun, ne
-  ;; saattavat edelleen riippua toisista jolloin homma ei toimi
-  (into []
-        (comp
-         (map (fn [[sym loc]]
-                (when-let [def-loc (get def-locs sym)]
-                  (let [definition (get program def-loc)]
-                    definition))))
-         (remove nil?))
-        dependencies))
+  (->> (loop [[head & queue] (keys dependencies)
+              chain '()]
+         (if-not head chain
+                 (let [deps (get dependencies head)]
+                   (recur (into (vec queue) (remove (set chain) deps))
+                          (-> (cons head chain))))))
+       (map-indexed (fn [i c] {c i}))
+       (apply (partial merge-with min))
+       (sort-by second)
+       (map (fn [[sym _]]
+              (when-let [def-loc (get def-locs sym)]
+                (get program def-loc))))
+       (remove nil?)))
 
 (defn symbol-def-locations [def-locations symbols]
   (keep #(get def-locations %) symbols))
@@ -97,9 +99,9 @@ NOT y -> i
       unordered (remove-exprs program root-val-locs)
       def-locs (definition-locations unordered)
       dependencies (dependencies (remove-exprs program root-val-locs))]
-  [dependencies (prioritized-definitions unordered
-                                         dependencies
-                                         def-locs)])
+  (prioritized-definitions2 unordered
+                            dependencies
+                            def-locs))
 
 (defn reorder-exprs [program]
   (let [root-val-locs (find-root-vals program)
