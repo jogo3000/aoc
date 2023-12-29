@@ -81,7 +81,7 @@ NOT y -> i
               chain '()]
          (if-not head chain
                  (let [deps (get dependencies head)]
-                   (recur (into (vec queue) (remove (set chain) deps))
+                   (recur (into queue (remove (set chain) deps))
                           (-> (cons head chain))))))
        (map-indexed (fn [i c] {c i}))
        (apply (partial merge-with min))
@@ -99,7 +99,7 @@ NOT y -> i
       unordered (remove-exprs program root-val-locs)
       def-locs (definition-locations unordered)
       dependencies (dependencies (remove-exprs program root-val-locs))]
-  (prioritized-definitions2 unordered
+  (prioritized-definitions unordered
                             dependencies
                             def-locs))
 
