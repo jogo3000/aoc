@@ -28,7 +28,7 @@ NOT y -> i
     (let [[unprocessed expr leftover-expr]
           (case s
             NOT [(rest symbols) nil `(bit-not ~(first symbols))]
-            -> [(rest symbols) `(def ~(first symbols) ~working-on) nil]
+            -> [(rest symbols) `(~(first symbols) ~working-on) nil]
             AND [(rest symbols) nil `(bit-and ~working-on ~(first symbols))]
             OR [(rest symbols) nil `(bit-or ~working-on ~(first symbols))]
             RSHIFT [(rest symbols) nil `(bit-shift-right ~working-on ~(first symbols))]
@@ -43,7 +43,7 @@ NOT y -> i
 
 (defn find-root-vals [program]
   (->> program
-       (map-indexed (fn [i [_ _ expr]]
+       (map-indexed (fn [i [_ expr]]
                       (when (number? expr) i)))
        (remove nil?)))
 
@@ -60,18 +60,18 @@ NOT y -> i
 
 (defn definition-locations [program]
   (into {} (map-indexed (fn [i exp]
-                          (let [[_def v _e] exp]
+                          (let [[v _e] exp]
                             [v i])))
         program))
 
 (defn dependencies [program]
   (->> program
-       (map-indexed (fn [i [_ s expr]]
-                      (cond (number? expr) []
-                            (symbol? expr) [{s [expr]}]
-                            (seq? expr)
-                            (mapv (fn [symbol] (when (symbol? symbol)
-                                                 {s [symbol]})) (rest expr)))))
+       (map (fn [[s expr]]
+              (cond (number? expr) []
+                    (symbol? expr) [{s [expr]}]
+                    (seq? expr)
+                    (mapv (fn [symbol] (when (symbol? symbol)
+                                         {s [symbol]})) (rest expr)))))
        (mapcat identity)
        (remove nil?)
        (apply (partial merge-with into))))
@@ -99,9 +99,10 @@ NOT y -> i
       unordered (remove-exprs program root-val-locs)
       def-locs (definition-locations unordered)
       dependencies (dependencies (remove-exprs program root-val-locs))]
-  (prioritized-definitions unordered
-                            dependencies
-                            def-locs))
+  dependencies
+  #_(prioritized-definitions unordered
+                             dependencies
+                             def-locs))
 
 (defn reorder-exprs [program]
   (let [root-val-locs (find-root-vals program)
@@ -128,15 +129,11 @@ NOT y -> i
   (->> program
        flatten
        (filter symbol?)
-       (remove #{`def `bit-and `bit-not `bit-or `bit-shift-right `bit-shift-left})))
+       (remove #{`bit-and `bit-not `bit-or `bit-shift-right `bit-shift-left})))
 
 (defn eval-string [s]
   (let [program (->> (my-read-string s)
-                     (reorder-exprs))
-        symbols (get-list-of-symbols program)
-        declarations (mapv #(list `declare %) symbols)]
-    (doseq [expr declarations]
-      (eval expr))
+                     (reorder-exprs))]
     (doseq [expr program]
       (eval expr))))
 
