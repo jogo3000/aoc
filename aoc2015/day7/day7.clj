@@ -95,14 +95,10 @@ NOT y -> i
   (keep #(get def-locations %) symbols))
 
 (let [program (my-read-string puzzle-input)
-      root-val-locs (find-root-vals program)
-      unordered (remove-exprs program root-val-locs)
-      def-locs (definition-locations unordered)
-      dependencies (dependencies (remove-exprs program root-val-locs))]
-  dependencies
-  #_(prioritized-definitions unordered
-                             dependencies
-                             def-locs))
+      dependencies (dependencies program)]
+  dependencies)
+
+
 
 (defn reorder-exprs [program]
   (let [root-val-locs (find-root-vals program)
