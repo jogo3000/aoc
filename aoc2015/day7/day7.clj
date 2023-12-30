@@ -1,7 +1,5 @@
 (ns day7
-  (:require [clojure.edn :as edn]
-            [clojure.walk :as walk])
-  (:import [java.lang Math]))
+  (:require [clojure.edn :as edn]))
 
 (def sample "123 -> x
 456 -> y
@@ -26,6 +24,12 @@ NOT y -> i
   (reduce (fn [acc n]
             (bit-flip acc n)) n (range 16)))
 
+(defn RSHIFT [s n]
+  (bit-and (bit-shift-right s n) (int (Character/MAX_VALUE))))
+
+(defn LSHIFT [s n]
+  (bit-and (bit-shift-left s n) (int (Character/MAX_VALUE))))
+
 (defn my-read-string [s]
   (loop [[s & symbols] (edn/read-string (str "[" s "]"))
          exprs []
@@ -36,8 +40,8 @@ NOT y -> i
             -> [(rest symbols) `(~(first symbols) ~working-on) nil]
             AND [(rest symbols) nil `(bit-and ~working-on ~(first symbols))]
             OR [(rest symbols) nil `(bit-or ~working-on ~(first symbols))]
-            RSHIFT [(rest symbols) nil `(bit-shift-right ~working-on ~(first symbols))]
-            LSHIFT [(rest symbols) nil `(bit-shift-left ~working-on ~(first symbols))]
+            RSHIFT [(rest symbols) nil `(RSHIFT ~working-on ~(first symbols))]
+            LSHIFT [(rest symbols) nil `(LSHIFT ~working-on ~(first symbols))]
             ;; Number, symbol
             [symbols nil s]
             )]
@@ -46,26 +50,40 @@ NOT y -> i
                      (if expr (conj exprs expr) exprs)
                      leftover-expr)))))
 
-(defn eval-wires [input]
-  (loop [wires (into {} (map vec) (my-read-string input))]
-    (if (every? number? (vals wires)) wires
-        (recur
-         (reduce (fn [acc [v _]]
-                   (update acc v
-                           #(walk/postwalk
-                             (fn [v]
-                               (cond
-                                 (number? v) v
-                                 (symbol? v) (get acc v v)
-                                 (seq? v) (if (every? number? (rest v))
-                                            (eval v)
-                                            v)
-                                 :else v)) %)))
-                 wires
-                 wires)))))
+;; OK OK I will evaluate it as an AST
 
 (def puzzle-input (slurp "day7/input.txt"))
 
-(comment
-  (eval-wires puzzle-input)
-)
+(def program (->> (my-read-string puzzle-input)
+                   (map vec)
+                   (into {})))
+
+(letfn [(eval-expr [eval-expr expr]
+          #_(Thread/sleep 200)
+          (let [res
+                (cond
+                  (number? expr) expr
+                  (symbol? expr) (eval-expr eval-expr (get program expr))
+                  (seq? expr) (eval (cons (first expr) (map (partial eval-expr eval-expr) (rest expr))))
+                  :else (throw (Exception. (str "wad dis" expr))))]
+            (println expr "->" res)
+            res))]
+  (let [mem (memoize eval-expr)]
+    (mem mem (get program 'a)))) ;; 3176
+
+;; Part 2
+
+(def override (assoc program 'b 3176))
+
+(letfn [(eval-expr [eval-expr expr]
+          #_(Thread/sleep 200)
+          (let [res
+                (cond
+                  (number? expr) expr
+                  (symbol? expr) (eval-expr eval-expr (get override expr))
+                  (seq? expr) (eval (cons (first expr) (map (partial eval-expr eval-expr) (rest expr))))
+                  :else (throw (Exception. (str "wad dis" expr))))]
+            (println expr "->" res)
+            res))]
+  (let [mem (memoize eval-expr)]
+    (mem mem (get override 'a)))); 14710
