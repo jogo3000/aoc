@@ -34,7 +34,25 @@
           (reduce +))
      (->> parts
           (map (comp count decode))
-          (reduce +)))) 1342
+          (reduce +)))) ;  1342
 
 
 ;; Part deux
+
+(defn encode [s]
+  (str "\""
+       (-> s
+           (str/replace #"\\" "\\\\\\\\") ;; <- that's messed up man
+
+           (str/replace #"\"" "\\\\\""))
+       "\""))
+
+
+(let [s (str/trim puzzle-input)
+      parts (map str/trim (str/split-lines s))]
+  (- (->> parts
+          (map (comp count encode))
+          (reduce +))
+     (->> parts
+          (map count)
+          (reduce +)))) 2074
