@@ -59,3 +59,57 @@
 (nth (iterate conway's-look-and-say (count "111312213")) 40) ; 291436 This again loses information too much
 
 ;; Maybe I should use the "Elements" from Conway's paper. Ugh, not now however
+
+;; One more shot with iterating but constructing the strings more intelligently before that
+
+
+(defn faster-look-and-say [s]
+  (loop [[c & s] s
+         s' '()
+         last-c nil
+         l 0]
+    (cond
+      (not c)
+      (let [s'' (if (pos? l) (cons last-c (cons l s'))
+                    s')]
+        (str/join (reverse s'')))
+
+      (not= last-c c)
+      (recur s (if (pos? l)
+                 (cons last-c (cons l s'))
+                 s') c 1)
+      :else (recur s s' last-c (inc l)))))
+
+
+(take 10 (iterate faster-look-and-say "1"))
+
+'("1"
+  "11"
+  "21"
+  "1211"
+  "111221"
+  "312211"
+  "13112221"
+  "1113213211"
+  "31131211131221"
+  "13211311123113112211")
+
+(take 10 (iterate look-and-say "1"))
+
+'("1"
+  "11"
+  "21"
+  "1211"
+  "111221"
+  "312211"
+  "13112221"
+  "1113213211"
+  "31131211131221"
+  "13211311123113112211")
+
+(let [n 15
+      s "1113122113"]
+  (= (take n (iterate faster-look-and-say s))
+     (take n (iterate look-and-say s))))
+
+(count (nth (iterate faster-look-and-say "1113122113") 50)) ; 5103798
