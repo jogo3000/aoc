@@ -33,3 +33,12 @@ David would gain 41 happiness units by sitting next to Carol.
                  (assoc-in acc [person-a person-b] units))
                {})))
 
+(defn orderings [persons]
+  (if-not (seq persons)
+    '(())
+    (mapcat (fn [p]
+           (let [others (filter (partial not= p) persons)]
+             (map #(cons p %)
+                  (orderings others)))) persons)))
+
+(orderings (keys (parse-happiness-key example-input)))
