@@ -41,4 +41,25 @@ David would gain 41 happiness units by sitting next to Carol.
              (map #(cons p %)
                   (orderings others)))) persons)))
 
-(orderings (keys (parse-happiness-key example-input)))
+(defn tally-happiness [happiness-key seating]
+  (let [all-pairs (concat (cons (first seating) (into seating (rest seating)))
+                          (list (first seating)))]
+    (->> all-pairs
+         (partition 2 1)
+         (map #(get-in happiness-key %))
+         (reduce +))))
+
+(let [happiness-key (parse-happiness-key example-input)
+      orderings (orderings (keys happiness-key))]
+  (reduce (fn [best ordering]
+            (max best (tally-happiness happiness-key ordering)))
+          0 orderings)) ; 330, works
+
+(let [happiness-key (parse-happiness-key puzzle-input)
+      orderings (orderings (keys happiness-key))]
+  (reduce (fn [best ordering]
+            (max best (tally-happiness happiness-key ordering)))
+          0 orderings)) ;  733
+
+
+;; Part two
