@@ -63,3 +63,16 @@ David would gain 41 happiness units by sitting next to Carol.
 
 
 ;; Part two
+
+(let [happiness-key (parse-happiness-key puzzle-input)
+      with-me (-> happiness-key
+                  (update-vals #(assoc % "Me" 0))
+                  (assoc "Me" (into {}
+                                    (map (fn [n] [n 0]))
+                                    (keys happiness-key))))
+      orderings (orderings (keys with-me))]
+  (reduce (fn [best ordering]
+            (max best (tally-happiness with-me ordering)))
+          0 orderings)) ; 725
+
+;; Quite sad that I made it worse
