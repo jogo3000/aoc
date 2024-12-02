@@ -1,0 +1,2 @@
+{:aliases
+ {:more-memory {:jvm-opts ["-Xmx10G"]}}}
