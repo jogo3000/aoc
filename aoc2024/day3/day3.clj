@@ -22,3 +22,33 @@
 (solve-part1 sample-input) ; 161
 
 (solve-part1 puzzle-input); 164730528
+
+;; Part 2
+
+(defn instructions [s]
+  (->> (re-seq #"(mul\(\d+,\d+\))|(do\(\))|(don't\(\))" s)
+       (map first)))
+
+(instructions puzzle-input)
+
+(defn parse-instruction [s]
+  (str/split s #"\(|\)|,"))
+
+(->> puzzle-input instructions
+     (map parse-instruction)
+     (reduce (fn [[state x] [code par1 par2]]
+               (println state x code par1 par2)
+               (cond
+                 (= code "do")
+                 [:do x]
+
+                 (= code "don't")
+                 [:don't x]
+
+                 (and (= state :do)
+                      (= code "mul"))
+                 [state (+ x (* (parse-long par1)
+                                (parse-long par2)))]
+
+                 :else
+                 [state x])) [:do 0])); [:don't 70478672]
