@@ -65,3 +65,63 @@ p=9,5 v=-3,-3
 
 (->> (simulate-and-find-quadrants (slurp "day14/input") 101 103)
      safety-factor) ; 231782040
+
+;; part 2
+
+(defn simulate-1-second [max-x max-y {:keys [px py vx vy]}]
+  {:px (mod (+ px vx) max-x)
+   :py (mod (+ py vy) max-y)
+   :vx vx
+   :vy vy})
+
+(def repeating-figure
+  (let [arrangement
+        (->> (slurp "day14/input")
+             parse-input)]
+    (loop [arr arrangement
+           states {}
+           n 0]
+      #_(println (count states))
+      (cond
+        (>= n 100000)
+        :not-found
+
+        (or #_(= 10402 n) (states arr))
+        (do (println n)
+            (def *states states)
+            arr)
+
+        :else
+        (recur (map (partial simulate-1-second 101 103) arr)
+               (assoc states arr n)
+               (inc n)))))) ; 10403 is a point when we see something repeating
+
+;; Upper bound is 10403 then
+
+(map second (sort-by second *states))
+
+(defn render-figure [figure]
+  (->>
+   (let [mapp (vec
+               (for [i (range 104)]
+                 (vec
+                  (for [j (range 102)]
+                    \.))))]
+     (reduce (fn [m {:keys [px py]}]
+               (assoc-in m [py px] \0)) mapp figure))
+   (map str/join)
+   (str/join "\n")))
+
+(println (render-figure repeating-figure))
+
+(println (render-figure (ffirst *states)))
+
+(run!
+ (fn [[state n]]
+   (spit "tree.txt" (str "------ " n " ------\n") :append true)
+   (spit "tree.txt" (render-figure state) :append true))
+ (sort-by second *states))
+
+;; So the output surely contains the image. Upon inspecting the image there is a
+;; repeating pattern every 101 renderings, starting from frame 11. Scanning the
+;; renderings can find the answer which is 6475 (/ (- 6475 11) 101) = 64 cycles
