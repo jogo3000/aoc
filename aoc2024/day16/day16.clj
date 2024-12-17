@@ -135,4 +135,4 @@
 #_(->> (slurp "day16/input")
      find-paths
      (map evaluate-path)
-     sort first)
+     sort first) ;; Too slow, should do the A* but can I be bothered
