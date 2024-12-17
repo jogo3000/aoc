@@ -54,22 +54,85 @@
        str/split-lines
        (mapv vec)))
 
-(defn left [[y x]]
+(defn west [[y x]]
   [y (dec x)])
 
-(defn right [[y x]]
+(defn east [[y x]]
   [y (inc x)])
 
-(defn up [[y x]]
+(defn north [[y x]]
   [(dec y) x])
 
-(defn down [[y x]]
+(defn south [[y x]]
   [(inc y) x])
 
+(defn find-symbol [S m]
+  (for [y (range (count m))
+        x (range (count (first m)))
+        :when (= S (get-in m [y x]))]
+    [y x]))
 
-(let [m (parse-map sample-maze-1)
-      start (for [y (range (count m))
-                  x (range (count (first m)))
-                  :when (= \S (get-in m [y x]))]
-              [y x])]
-  start)
+(defn find-start [m]
+  (first (find-symbol \S m)))
+
+(defn find-end [m]
+  (first (find-symbol \E m)))
+
+(def valid-dest? #{\E \.})
+
+(defn find-paths [maze]
+  (let [m (parse-map maze)
+        start (find-start m)
+        end (find-end m)]
+    (loop [queue [{:path []
+                   :pos start
+                   :dir east}]
+           paths []]
+      (if (empty? queue) paths
+          (let [[{:keys [path pos dir]} & todo] queue]
+            #_(println pos (count queue) (count paths))
+            (if (= pos end) (recur todo (conj paths path))
+                (let [forward-tile (get-in m (dir pos))
+                      left ({north west west south south east east north} dir)
+                      right ({north east east south south west west north} dir)
+                      left-tile (get-in m (left pos))
+                      right-tile (get-in m (right pos))]
+                  (recur (-> todo
+                             (into (when (and (valid-dest? left-tile)
+                                              (not (fn? (peek path))))
+                                     [{:path (conj path left)
+                                       :pos pos
+                                       :dir left}]))
+                             (into (when (and (valid-dest? right-tile)
+                                              (not (fn? (peek path))))
+                                     [{:path (conj path right)
+                                       :pos pos
+                                       :dir right}]))
+                             (into (when (and (valid-dest? forward-tile)
+                                              (not ((into #{} path) (dir pos))))
+                                     [{:path (conj path (dir pos))
+                                       :pos (dir pos)
+                                       :dir dir}])))
+                         paths))))))))
+
+(defn evaluate-path [path]
+  (reduce (fn [acc move]
+            (if (fn? move) (+ acc 1000)
+                (inc acc))) 0 path))
+
+(->> sample-maze-1
+     find-paths
+     (map evaluate-path)
+     sort
+     first) ; 7036, correct
+
+(->> sample-maze-2
+     find-paths
+     (map evaluate-path)
+     sort first) ; 11048, correct
+
+
+#_(->> (slurp "day16/input")
+     find-paths
+     (map evaluate-path)
+     sort first)
