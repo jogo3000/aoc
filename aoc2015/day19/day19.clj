@@ -22,9 +22,9 @@ HOH")
                  c (subvec input i (min (+ i rc) (count input)))
                  postfix (subvec input (min (+ i rc) (count input)))]]
        (->> replacements
-            (map #(if (= (first %) c) (second %) c))
-            (map #(concat prefix % postfix))
-            (remove #(= (count input) (count %)))))
+            (map #(if (= (first %) c) (second %) nil))
+            (remove nil?)
+            (map #(concat prefix % postfix))))
      (reduce into)
      distinct
      count)))
@@ -33,4 +33,4 @@ HOH")
 
 ;; Samples work
 
-(count-replacements (slurp "day19/input")) ;; 438 still too low
+(count-replacements (slurp "day19/input")) ;; 509
