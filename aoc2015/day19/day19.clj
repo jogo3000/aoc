@@ -15,10 +15,12 @@ HOH")
 (defn count-replacements [og]
   (let [[replacements input] (parse-input og)]
     (->>
-     (for [i (range (count input))
-           :let [prefix (subvec input 0 i)
-                 c (subvec input i (inc i))
-                 postfix (subvec input (inc i))]]
+     (for [r replacements
+           i (range (count input))
+           :let [rc (count (first r))
+                 prefix (subvec input 0 i)
+                 c (subvec input i (min (+ i rc) (count input)))
+                 postfix (subvec input (min (+ i rc) (count input)))]]
        (->> replacements
             (map #(if (= (first %) c) (second %) c))
             (map #(concat prefix % postfix))
@@ -31,6 +33,4 @@ HOH")
 
 ;; Samples work
 
-(count-replacements (slurp "day19/input")) ;; 189 - too low
-
-;; Oh yeah, the actual data contains replacements longer than 1 character
+(count-replacements (slurp "day19/input")) ;; 438 still too low
