@@ -1,4 +1,5 @@
 (ns day3
+  "https://adventofcode.com/2025/day/3"
   (:require [clojure.string :as str]))
 
 (def sample "987654321111111
