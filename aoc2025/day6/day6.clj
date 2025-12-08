@@ -23,3 +23,25 @@
      (reduce +)) ; 6503327062445
 
 ;; Part 2
+
+(let [input (slurp "day6/input")
+      longest-line (->> input str/trim str/split-lines (mapv vec) (map count) (apply max))]
+  (->> input
+       str/trim
+       str/split-lines
+       (mapv vec)
+       (mapv (fn [line] (if (< (count line) longest-line) (into line (repeat (- longest-line (count line)) \space)) line)))
+       (apply map list)
+       (partition-by (fn [coll]
+                         (every? #(= \space %) coll)))
+       (remove #(= 1 (count %)))
+       (map (fn [cols]
+                (let [operator (some #(#{\* \+} %) (apply concat cols))]
+                  (->> cols
+                       (map (fn [col]
+                              (->> col
+                                  (remove #(#{\* \+ \space} %))
+                                  str/join
+                                  parse-long)))
+                       (reduce (case operator \* * \+ +))))))
+       (reduce +))) ; 9640641878593
