@@ -75,3 +75,31 @@
                  (map (fn [xs]
                         (let [[[x y] & _] xs]
                           (cons [(inc x) y] xs)))))))))))
+
+
+(->>
+ (let [m (parse-input (slurp "day7/input"))
+       depth (count m)]
+   (loop [beams [{:loc (locate-source m)
+                  :beams 1}]]
+     (if (>= (-> beams first :loc first) depth) beams
+         (let [{splitting true continuing false}
+               (->> beams
+                    (map (comp (partial into {}) vector (juxt (comp (partial at-splitter? m) :loc) vector)))
+                    (apply merge-with into))
+               new-beams
+               (->> splitting
+                    (mapcat (fn [{[x y] :loc
+                                  beams :beams}] [{:loc [x (dec y)]
+                                                   :beams beams}
+                                                  {:loc [x (inc y)]
+                                                   :beams beams}]))
+                    (into continuing)
+                    (reduce (fn [acc {:keys [loc beams]}]
+                              (update acc loc (fnil (partial + beams) 0))) {}))]
+           (recur
+            (->> new-beams
+                 (map (fn [[[x y] beams]] {:loc [(inc x) y]
+                                           :beams beams}))))))))
+ (map :beams)
+ (reduce +)) ; 1393669447690
