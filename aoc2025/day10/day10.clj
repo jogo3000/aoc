@@ -14,13 +14,18 @@
   (->> coll (map #(str/replace % #"[\(\)]" "")) (map #(str/split % #"," ))
        (map #(map parse-long %))))
 
+(defn parse-joltages [s]
+  (->> (str/split s #"[\{,\}]")
+       (drop 1)
+       (mapv parse-long)))
+
 (defn parse-input [input]
   (->> input str/trim str/split-lines
        (map (fn [s]
               (let [parts (str/split s #"\s")
                     goal (->> parts first parse-goal)
                     switches (->> parts (drop 1) butlast parse-switches)
-                    joltages (last parts)]
+                    joltages (->> parts last parse-joltages)]
                 {:goal goal :switches switches :joltages joltages})))))
 
 (defn shortest-distance [m distances]
@@ -51,3 +56,33 @@
      parse-input
      (map solve-machine)
      (reduce +)) ; 522
+
+
+;; Part 2
+(defn power-flick [state switches]
+  (reduce (fn [state switch] (update state switch dec)) state switches))
+
+(defn solve-joltage [machine]
+  (println machine)
+  (loop [unvisited #{(:joltages machine)}
+         visited #{}
+         distances {(:joltages machine) 0}]
+    (let [[state distance] (shortest-distance unvisited distances)]
+      (if (every? zero? state) distance
+          (let [neighbours (->> (map (partial power-flick state) (:switches machine))
+                                (filter #(not-any? neg? %)))]
+            (recur (-> unvisited (into neighbours) (disj state) (set/difference visited))
+                   (conj visited state)
+                   (reduce (fn [distances n]
+                             (assoc distances n
+                                    (min (inc distance)
+                                         (get distances n Integer/MAX_VALUE))))
+                           distances
+                           neighbours)))))))
+
+;; This works, but is too slow for part 2
+(->> #_(slurp "day10/input")
+     sample
+     parse-input
+     (map solve-joltage)
+     (reduce +))
