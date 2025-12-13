@@ -71,28 +71,29 @@
   (->> (for [t1 points
              t2 points
              :when (not= t1 t2)]
-         (list (m-distance t1 t2) #{t1 t2}))
-       (into #{})))
+         #{t1 t2})))
 
-;; Too slow, but works
-#_
-(let [red-tiles (parse-input (slurp "day9/input"))
+;; Super slow but eventually did it
+(let [red-tiles (parse-input #_sample (slurp "day9/input"))
       border (exterior red-tiles)
       max-x-border (max-x red-tiles)
-      border-points (into #{} border)
-      all-pairs-best-first  (->> (all-pairs red-tiles)
-                                 (sort-by first)
-                                 reverse)]
-  (->> all-pairs-best-first
-       (some (fn [[_ pair]]
-               (let [rect-exterior (exterior [[(min-x pair) (min-y pair)]
-                                              [(min-x pair) (max-y pair)]
-                                              [(max-x pair) (max-y pair)]
-                                              [(max-x pair) (min-y pair)]])
-                     to-be-tested (into #{}
-                                        (remove border-points)
-                                        rect-exterior)]
-                 (when (->> to-be-tested
+      border-points (into #{} border)]
+  (->> red-tiles
+       all-pairs
+       (reduce (fn [best pair]
+                 (let [area (area (first pair) (second pair))]
+                   (cond
+                     (>= (:area best) area)
+                     best
+
+                     (let [rect-exterior (exterior [[(min-x pair) (min-y pair)]
+                                                    [(min-x pair) (max-y pair)]
+                                                    [(max-x pair) (max-y pair)]
+                                                    [(max-x pair) (min-y pair)]])
+                           to-be-tested (into #{}
+                                              (remove border-points)
+                                              rect-exterior)]
+                       (->> to-be-tested
                             (every? (fn [[x y]]
                                       (->>
                                        (reduce (fn [{:keys [intersections on-edge] :as state} x']
@@ -111,5 +112,11 @@
                                                {:intersections 0
                                                 :on-edge false} (range x (inc max-x-border)))
                                        :intersections
-                                       odd?))))
-                   pair))))))
+                                       odd?)))))
+                     (do
+                       (println "bested" (:area best) ", new best" area)
+                       {:area area
+                        :pair pair})
+
+                     :else best)))
+               {:area 0})))
