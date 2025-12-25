@@ -1,5 +1,6 @@
 (ns day12
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [clojure.set :as set]))
 
 (def sample (slurp "day12/sample"))
 
@@ -23,6 +24,12 @@
         shapes (->> segments butlast (map parse-shape) (into {}))
         regions (->> segments last str/split-lines (map parse-region))]
     [shapes regions]))
+
+(defn min-x [points]
+  (->> points (map second) (reduce min)))
+
+(defn min-y [points]
+  (->> points (map first) (reduce min)))
 
 (defn draw-shape [points]
   (let [ys (map first points)
@@ -68,10 +75,77 @@
            (map #(map inc %)))
           shape)))
 
-(let [shape (get-in (parse-input sample) [0 0])]
-  (println (draw-shape shape))
-  (println)
-  (println (draw-shape (reflect shape)))
-  (println)
-  (println (draw-shape (rotate (rotate shape))))
-  (println))
+(defn possible-transformations [shape]
+  (concat (take 4 (iterate rotate shape))
+          (take 4 (iterate rotate (reflect shape)))))
+
+(defn offset [shape [y x :as _point]]
+  (into #{}
+        (map (fn [[ys xs]]
+               [(+ ys y) (+ x xs)]) shape)))
+
+(defn fits? [space piece]
+  (= (set/intersection space piece)
+     piece))
+
+(defn layout-initial-space [[y x]]
+  (into #{}
+        (for [y (range y)
+              x (range x)]
+          [y x])))
+
+(defn try-insert [space shape point]
+  (let [shape-at-point (offset shape point)]
+    (when (fits? space shape-at-point)
+      (set/difference space shape-at-point))))
+
+(defn possible-inserts [space shape]
+  (keep (partial try-insert space shape) space))
+
+(defn can-fit? [shapes space pieces]
+  (>= (count space)
+      (->> pieces (map (comp count first shapes)) (reduce +))))
+
+(defn my-mapcat
+  "http://clojurian.blogspot.com/2012/11/beware-of-mapcat.html"
+  [f coll]
+  (lazy-seq
+   (if (not-empty coll)
+     (concat
+      (f (first coll))
+      (my-mapcat f (rest coll))))))
+
+(defn fit [shapes space pieces]
+  (if-not
+      (seq pieces)
+      space
+
+      (when (can-fit? shapes space pieces)
+        (let [transformations (->> pieces first shapes)
+              remaining-spaces
+              (when (>= (count space) (count (first transformations)))
+                (my-mapcat (partial possible-inserts space) transformations))]
+          (some (fn [remaining-space]
+                  (fit shapes remaining-space (rest pieces))) remaining-spaces)))))
+
+(let [shapes (into {}
+                   (map (fn [[index shape]]
+                          [index (possible-transformations shape)]))
+                   (first (parse-input sample)))
+      {:keys [size counts]} (-> sample parse-input second second)
+      pieces (mapcat (fn [[x n]] (repeat n x)) counts)
+      space (layout-initial-space size)]
+  (fit shapes space pieces))
+
+#_(let [parsed (parse-input sample)
+      shapes (into {}
+                   (map (fn [[index shape]]
+                          [index (possible-transformations shape)]))
+                   (first parsed))
+      recipes (second parsed)]
+  (->> recipes
+       (filter (fn [{:keys [size counts]}]
+                 (let [pieces (mapcat (fn [[x n]] (repeat n x)) counts)
+                       space (layout-initial-space size)]
+                   (fit shapes space pieces))))
+       count))
