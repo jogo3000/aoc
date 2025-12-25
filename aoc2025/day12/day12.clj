@@ -2,7 +2,10 @@
   (:require [clojure.string :as str]
             [clojure.set :as set]))
 
+(set! *warn-on-reflection* true)
+
 (def sample (slurp "day12/sample"))
+(def input (slurp "day12/input"))
 
 (defn parse-shape [s]
   (let [id (->> s first str parse-long)
@@ -85,8 +88,7 @@
                [(+ ys y) (+ x xs)]) shape)))
 
 (defn fits? [space piece]
-  (= (set/intersection space piece)
-     piece))
+  (every? #(contains? space %) piece))
 
 (defn layout-initial-space [[y x]]
   (into #{}
@@ -128,7 +130,7 @@
           (some (fn [remaining-space]
                   (fit shapes remaining-space (rest pieces))) remaining-spaces)))))
 
-(let [shapes (into {}
+#_(let [shapes (into {}
                    (map (fn [[index shape]]
                           [index (possible-transformations shape)]))
                    (first (parse-input sample)))
@@ -137,7 +139,8 @@
       space (layout-initial-space size)]
   (fit shapes space pieces))
 
-#_(let [parsed (parse-input sample)
+#_(let [counter (atom 1)
+      parsed (parse-input input)
       shapes (into {}
                    (map (fn [[index shape]]
                           [index (possible-transformations shape)]))
@@ -145,6 +148,8 @@
       recipes (second parsed)]
   (->> recipes
        (filter (fn [{:keys [size counts]}]
+                 (println @counter)
+                 (swap! counter inc)
                  (let [pieces (mapcat (fn [[x n]] (repeat n x)) counts)
                        space (layout-initial-space size)]
                    (fit shapes space pieces))))
