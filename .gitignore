@@ -5,3 +5,4 @@ lib/
 lib64
 /aoc2023/day24/share/
 .cpcache/
+.DS_Store
